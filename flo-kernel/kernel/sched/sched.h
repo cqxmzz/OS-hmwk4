@@ -79,6 +79,7 @@ extern struct mutex sched_domains_mutex;
 
 struct cfs_rq;
 struct rt_rq;
+struct grr_rq; /*Wendan Kang*/
 
 static LIST_HEAD(task_groups);
 
@@ -311,6 +312,14 @@ struct rt_rq {
 #endif
 };
 
+//https://piazza.com/class/hxmyhj3hhcj16l?cid=338
+/* grr classes' related field in a runqueue: */
+struct grr_rq {
+	
+	unsigned long grr_nr_running;
+
+};
+
 #ifdef CONFIG_SMP
 
 /*
@@ -372,6 +381,7 @@ struct rq {
 
 	struct cfs_rq cfs;
 	struct rt_rq rt;
+	struct grr_rq grr; /*Wendan Kang*/
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this cpu: */
@@ -379,6 +389,9 @@ struct rq {
 #endif
 #ifdef CONFIG_RT_GROUP_SCHED
 	struct list_head leaf_rt_rq_list;
+#endif
+#ifdef CONFIG_GRR_GROUP_SCHED /*Wendan Kang*/
+	struct list_head leaf_grr_rq_list;
 #endif
 
 	/*
@@ -1155,6 +1168,7 @@ extern void print_rt_stats(struct seq_file *m, int cpu);
 
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq);
+extern void init_grr_rq(); /*Wendan Kang*/
 extern void unthrottle_offline_cfs_rqs(struct rq *rq);
 
 extern void account_cfs_bandwidth_used(int enabled, int was_enabled);
