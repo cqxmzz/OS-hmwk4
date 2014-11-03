@@ -86,6 +86,8 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
+ /*define timer for load balance*/
+static struct hrtimer grr_balance_timer;
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
