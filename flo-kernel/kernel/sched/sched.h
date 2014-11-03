@@ -34,6 +34,9 @@ extern __read_mostly int scheduler_running;
 #define NICE_0_LOAD		SCHED_LOAD_SCALE
 #define NICE_0_SHIFT		SCHED_LOAD_SHIFT
 
+/*define timer for load balance*/
+static struct hrtimer grr_balance_timer;
+
 /*
  * These are the 'tuning knobs' of the scheduler:
  */
@@ -122,6 +125,14 @@ struct task_group {
 	struct rt_rq **rt_rq;
 
 	struct rt_bandwidth rt_bandwidth;
+#endif
+
+/*Wendan Kang*/
+#ifdef CONFIG_GRR_GROUP_SCHED
+	struct sched_grr_entity **grr_se;
+	struct grr_rq **grr_rq;
+
+	struct grr_bandwidth grr_bandwidth; /*???*/
 #endif
 
 	struct rcu_head rcu;
@@ -317,6 +328,65 @@ struct rt_rq {
 struct grr_rq {
 	
 	unsigned long grr_nr_running;
+	/* the current size of the queue */
+	unsigned long size;
+	/* This struct is defined in sched.h  */
+	struct sched_grr_entity run_queue;
+	/* A lock to protect the WRR Run queue list */
+	raw_spinlock_t grr_rq_lock;
+	/* Currently running entity on this GRR run queue
+	 * It's NULL if nothing is running */
+	struct sched_grr_entity *curr;
+
+#ifdef CONFIG_GRR_GROUP_SCHED
+	struct rq *rq;	/* cpu runqueue to which this cfs_rq is attached */
+
+	/*
+	 * leaf grr_rqs are those that hold tasks (lowest schedulable entity in
+	 * a hierarchy). Non-leaf lrqs hold other higher schedulable entities
+	 * (like users, containers etc.)
+	 *
+	 * leaf_grr_rq_list ties together list of leaf cfs_rq's in a cpu. This
+	 * list is used during load balance.
+	 */
+	int on_list;
+	struct list_head leaf_grr_rq_list;
+	struct task_group *tg;	/* group that "owns" this runqueue */
+
+#ifdef CONFIG_SMP
+	/*
+	 *   h_load = weight * f(tg)
+	 *
+	 * Where f(tg) is the recursive weight fraction assigned to
+	 * this group.
+	 */
+	unsigned long h_load;
+
+	/*
+	 * Maintaining per-cpu shares distribution for group scheduling
+	 *
+	 * load_stamp is the last time we updated the load average
+	 * load_last is the last time we updated the load average and saw load
+	 * load_unacc_exec_time is currently unaccounted execution time
+	 */
+	u64 load_avg;
+	u64 load_period;
+	u64 load_stamp, load_last, load_unacc_exec_time;
+
+	unsigned long load_contribution;
+#endif /* CONFIG_SMP */
+#ifdef CONFIG_GRR_BANDWIDTH
+	int runtime_enabled;
+	u64 runtime_expires;
+	s64 runtime_remaining;
+
+	u64 throttled_timestamp;
+	int throttled, throttle_count;
+	struct list_head throttled_list;
+#endif /* CONFIG_GRR_BANDWIDTH */
+#endif /* CONFIG_GRR_GROUP_SCHED */
+
+
 
 };
 

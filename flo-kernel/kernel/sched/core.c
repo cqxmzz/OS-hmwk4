@@ -1736,6 +1736,7 @@ static void __sched_fork(struct task_struct *p)
 #endif
 
 	INIT_LIST_HEAD(&p->rt.run_list);
+	INIT_LIST_HEAD(&p->grr.run_list); /*init grr runqueue*/
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
@@ -1768,7 +1769,11 @@ void sched_fork(struct task_struct *p)
 	 */
 	if (unlikely(p->sched_reset_on_fork)) {
 		if (task_has_rt_policy(p)) {
-			p->policy = SCHED_NORMAL;
+			/*Wendan Kang:
+			Tasks using the SCHED_GRR policy should 
+			take priority over tasks using the SCHED_NORMAL policy, 
+			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
+			p->policy = SCHED_GRR; 
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
@@ -1782,10 +1787,13 @@ void sched_fork(struct task_struct *p)
 		 * fulfilled its duty:
 		 */
 		p->sched_reset_on_fork = 0;
+		/*Wendan Kang*/
+		if (p->policy == SCHED_GRR)
+			task_fork_grr(p);
 	}
 
 	if (!rt_prio(p->prio))
-		p->sched_class = &fair_sched_class;
+		p->sched_class = &grr_sched_class;
 
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
@@ -1798,6 +1806,7 @@ void sched_fork(struct task_struct *p)
 	 * Silence PROVE_RCU.
 	 */
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
+	/* Wendan Kang: assign task to cpu here, need to implement.*/
 	set_task_cpu(p, cpu);
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
@@ -4064,6 +4073,9 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	else
 		p->sched_class = &fair_sched_class;
 	set_load_weight(p);
+	/* Wendan Kang: Set the sched class for the grr policy */
++	if (p->policy == SCHED_GRR)
++		p->sched_class = &grr_sched_class;
 }
 
 /*
@@ -4107,7 +4119,7 @@ recheck:
 
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
 				policy != SCHED_NORMAL && policy != SCHED_BATCH &&
-				policy != SCHED_IDLE)
+				policy != SCHED_IDLE && && policy != SCHED_GRR) /*Wendan Kang*/
 			return -EINVAL;
 	}
 
@@ -6874,6 +6886,12 @@ static int cpuset_cpu_inactive(struct notifier_block *nfb, unsigned long action,
 
 void __init sched_init_smp(void)
 {
+	/* Wendan Kang: ATTENTION!!! WHAT IS SCHED_WRR_REBALANCE_TIME_PERIOD_NS!!FIND THAT!!*/
+	ktime_t period_ktime;
+	struct timespec period = {
+		.tv_nsec = SCHED_WRR_REBALANCE_TIME_PERIOD_NS,
+		.tv_sec = 0
+	};
 	cpumask_var_t non_isolated_cpus;
 
 	alloc_cpumask_var(&non_isolated_cpus, GFP_KERNEL);
@@ -6895,6 +6913,10 @@ void __init sched_init_smp(void)
 	hotcpu_notifier(update_runtime, 0);
 
 	init_hrtick();
+
+	/* start my own wrr rebalance timer */
+	period_ktime = timespec_to_ktime(period);
+	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
 
 	/* Move init over to a non-isolated CPU */
 	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
@@ -6937,6 +6959,10 @@ void __init sched_init(void)
 #ifdef CONFIG_RT_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
 #endif
+/*Wendan Kang*/
+#ifdef CONFIG_GRR_GROUP_SCHED
+	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
+#endif
 #ifdef CONFIG_CPUMASK_OFFSTACK
 	alloc_size += num_possible_cpus() * cpumask_size();
 #endif
@@ -6959,6 +6985,15 @@ void __init sched_init(void)
 		ptr += nr_cpu_ids * sizeof(void **);
 
 #endif /* CONFIG_RT_GROUP_SCHED */
+/*Wendan Kang*/
+#ifdef CONFIG_GRR_GROUP_SCHED
+		root_task_group.grr_se = (struct sched_grr_entity **)ptr;
+		ptr += nr_cpu_ids * sizeof(void **);
+
+		root_task_group.grr_rq = (struct grr_rq **)ptr;
+		ptr += nr_cpu_ids * sizeof(void **);
+
+#endif /* CONFIG_RT_GROUP_SCHED */
 #ifdef CONFIG_CPUMASK_OFFSTACK
 		for_each_possible_cpu(i) {
 			per_cpu(load_balance_tmpmask, i) = (void *)ptr;
@@ -6969,6 +7004,9 @@ void __init sched_init(void)
 
 #ifdef CONFIG_SMP
 	init_defrootdomain();
+	/*Wendan Kang*/
+	hrtimer_init(&grr_balance_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	grr_balance_timer.function = print_current_time;
 #endif
 
 	init_rt_bandwidth(&def_rt_bandwidth,
@@ -6978,6 +7016,8 @@ void __init sched_init(void)
 	init_rt_bandwidth(&root_task_group.rt_bandwidth,
 			global_rt_period(), global_rt_runtime());
 #endif /* CONFIG_RT_GROUP_SCHED */
+
+/*Wendan Kang: Do we need bandwidth?*/
 
 #ifdef CONFIG_CGROUP_SCHED
 	list_add(&root_task_group.list, &task_groups);
@@ -7003,6 +7043,7 @@ void __init sched_init(void)
 		rq->calc_load_update = jiffies + LOAD_FREQ;
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt, rq);
+		init_grr_rq(&rq->grr);
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
@@ -7033,6 +7074,11 @@ void __init sched_init(void)
 #ifdef CONFIG_RT_GROUP_SCHED
 		INIT_LIST_HEAD(&rq->leaf_rt_rq_list);
 		init_tg_rt_entry(&root_task_group, &rq->rt, NULL, i, NULL);
+#endif
+/*Wendan Kang*/
+#ifdef CONFIG_GRR_GROUP_SCHED
+		INIT_LIST_HEAD(&rq->leaf_rt_rq_list);
+		/*may need more..*/
 #endif
 
 		for (j = 0; j < CPU_LOAD_IDX_MAX; j++)
@@ -7093,7 +7139,8 @@ void __init sched_init(void)
 	/*
 	 * During early bootup we pretend to be a normal task:
 	 */
-	current->sched_class = &fair_sched_class;
+	 /*Wendan Kang: do we need to change that?*/
+	current->sched_class = &grr_sched_class;
 
 #ifdef CONFIG_SMP
 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
@@ -7719,6 +7766,9 @@ static int cpu_cgroup_can_attach(struct cgroup *cgrp,
 	return 0;
 }
 
+/* put tasks in tset into group cgrp if cgrp is not the current group of tasks
+*  Wendan Kang
+*/
 static void cpu_cgroup_attach(struct cgroup *cgrp,
 			      struct cgroup_taskset *tset)
 {

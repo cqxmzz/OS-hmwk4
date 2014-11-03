@@ -857,5 +857,6 @@ asmlinkage long sys_process_vm_writev(pid_t pid,
 				      const struct iovec __user *rvec,
 				      unsigned long riovcnt,
 				      unsigned long flags);
+asmlinkage long sys_sched_set_CPUgroup(int numCPU, int group);
 
 #endif

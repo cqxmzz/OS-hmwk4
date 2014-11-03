@@ -1252,6 +1252,28 @@ struct sched_rt_entity {
 
 /*Wendan Kang*/
 struct sched_grr_entity {
+	/* Make a list out of the items */
+	struct list_head run_list;
+	/* The task that is to be scheduled */
+	struct task_struct *task;
+	
+	/* the current time slice for this task
+	 * time_slice = weight * SCHED_WRR_TIME_QUANTUM.
+	 * given in milliseconds.
+	 */
+	unsigned int time_slice;
+	/* the amount of time left for this task
+	 * on the currently assigned time slice.
+	 * This should actually be in *10s of milliseconds*,
+	 * so divide time_slice value by 10. */
+	unsigned long time_left;
+#ifdef CONFIG_GRR_GROUP_SCHED
+	struct sched_grr_entity	*parent;
+	/* rq on which this entity is (to be) queued: */
+	struct grr_rq		*grr_rq;
+	/* rq "owned" by this entity/group: */
+	struct grr_rq		*my_q;
+#endif
 	
 };
 
