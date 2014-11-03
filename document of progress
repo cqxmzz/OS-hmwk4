@@ -1,0 +1,66 @@
+document of progress:
+1. arch/arm/config/gold_fish_armv7: didn't find CONFIG_DEBUG_FS is not set. Not change.
+2. include/linix/init_task.h line 151-153: still need to check the variables' name.
+3. include/linux/sched.h: sched_grr_entity: 
+	(1) didn't use weight, github used because its time slice = time quantum * weight
+	(2) not sure whether we need time left. 
+	(3) change time_slice to unsigned int, reference on sched_rt_entity.
+	(4) add group features.
+4. add basic lines for construcint syscall 378 sched_set_CPUgroup for part 2.
+5. kernel/kthread.c: doubt whether we should change that:
+	-		sched_setscheduler_nocheck(create.result, SCHED_NORMAL, &param);
+	+		/* TODO:
+	+		 * Note. Use SCHED_WRR. SCHED_CHange this to SCHED_WRR.
+	+		 */
+	+		sched_setscheduler_nocheck(create.result, SCHED_WRR, &param);
+ 			set_cpus_allowed_ptr(create.result, cpu_all_mask);
+6. kernel/sched/sched.h:
+	(1) define timer for balance: grr_balance_timer
+	(2) struct grr_rq: may be too much, delete the weight attribute on github, add some more SMP and GROUP attributes, reference on cfs_rq.
+	(3) For github, line 1815 - end is in core.c.
+	(4) In struct task_group, add grr group features. Not sure whether we need bandwidth.
+7. kernel/sched/core.c:
+	(1) line 1816 just print what policy is, so we didn't change.
+	(2) didn't add test:
++	/* testing hack
++	 * Want to test Scheulder in user land .... */
++	if (strcmp(p->comm, "test") == 0) {
++		struct task_struct *t;
++		struct sched_param my_sp = {.sched_priority = 0};
++
++		printk("Detected Set Sched called for test program");
++
++		for_each_process(t) {
++			if (strcmp(t->comm, "infinite") == 0) {
++				int ret;
++				printk("Update SCHE for infinite process"
++					" loop\n");
++				ret = __sched_setscheduler(t, SCHED_WRR,
++							   &my_sp, false);
++				if (ret != 0)
++					printk("FAILED TO CHANGE infinite"
++						"prc : %d\n", ret);
++				else {
++					printk("Infinite changed\n");
++					printk("INFT Policy: %d\n", p->policy);
++				}
++			}
++		}
++	}
++
+	(3) line 6890: find out where define is 
+	(4) in function sched_init: implement some group feature
+8. Instead implementing init_cfs_rq in sched.h in github, this version for homework implement that in fair.c. So we just follow that.
+9. grr.c:
+	(1) init_grr_rq: delete weight, init time slice as 100
+
+
+
+
+
+
+
+
+
+
+
