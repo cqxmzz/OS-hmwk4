@@ -81,6 +81,7 @@
 #include <asm/paravirt.h>
 #endif
 
+#include "grr.c"
 #include "sched.h"
 #include "../workqueue_sched.h"
 
