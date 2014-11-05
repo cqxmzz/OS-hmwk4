@@ -126,6 +126,12 @@ err:
 
 #define grr_entity_is_task(grr_se) (1)
 
+void free_grr_sched_group(struct task_group *tg) {
+}
+
+int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent){
+	return 1;
+}
 
 /* We probabily don't need this if we have the task pointer Qiming Chen*/
 static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
