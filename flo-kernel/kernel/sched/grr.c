@@ -7,6 +7,12 @@
  *  handled in sched_fair.c)
  */
 
+
+/*Qiming Chen*/
+#define for_each_sched_grr_entity(grr_se) \
+	for (; grr_se; grr_se = grr_se->parent)
+
+
 const struct sched_class grr_sched_class;
 
 /**************************************************************
@@ -64,7 +70,7 @@ static inline int on_grr_rq(struct sched_grr_entity *grr_se)
 {
 	/* If any item is on the grr_rq, then the run
 	 * list will NOT be empty. */
-	if (list_empty(&grr_entity->run_list))
+	if (list_empty(&grr_se->run_list))
 		return 0;
 	else
 		return 1;
@@ -230,10 +236,10 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 *1. struct rq *rq, struct grr_rq *grr_rq
 *2. struct grr_rq *grr_rq
 */
-static struct sched_grr_entity *pick_next_grr_entity(/*...*/)
-{
-	/*...*/
-}
+//static struct sched_grr_entity *pick_next_grr_entity(struct grr_rq * grr_rq)
+//{
+//	return NULL;
+//}
 
 
 /*Wendan Kang: After change this fuction, change the relatives in kernel/sched/sched.h line 1197(approx)*/
@@ -245,15 +251,15 @@ static struct sched_grr_entity *pick_next_grr_entity(/*...*/)
 void init_grr_rq(struct grr_rq *grr_rq)
 {
 	struct sched_grr_entity *grr_se;
-	grr_rq->nr_running = 0;
+	grr_rq->grr_nr_running = 0;
 	grr_rq->size = 0;
 	grr_rq->curr = NULL;
 
-	raw_spin_lock_init(&(grr_rq->grr_rq_lock));
+	spin_lock_init(&(grr_rq->grr_rq_lock));
 
 	/* Initialize the run queue list */
 	grr_se = &grr_rq->run_queue;
-	INIT_LIST_HEAD(&grr_entity->run_list);
+	INIT_LIST_HEAD(&grr_se->run_list);
 
 	grr_se->task = NULL;
 	grr_se->time_slice = 100;
@@ -285,7 +291,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_grr_entity *grr_se;
 	struct grr_rq *grr_rq = &rq->grr;
 
-	grr_entity = &grr_rq->run_queue;
+	grr_se = &grr_rq->run_queue;
 
 	init_task_grr(p); /* initializes the wrr_entity in task_struct */
 	new_se = &p->grr;
@@ -301,7 +307,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	list_add_tail(&new_se->run_list, head);
 
 	/* update statistics counts */
-	++grr_rq->nr_running;
+	++grr_rq->grr_nr_running;
 	++grr_rq->size;
 
 
@@ -328,7 +334,7 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	list_del(&grr_se->run_list);
 
 	/* update statistics counts */
-	--grr_rq->nr_running;
+	--grr_rq->grr_nr_running;
 	--grr_rq->size;
 
 	spin_unlock(&grr_rq->grr_rq_lock);
@@ -336,7 +342,7 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 
 static void yield_task_grr(struct rq *rq)
 {
-	requeue_task_rt(rq, rq->curr, 0);
+	requeue_task_grr(rq, rq->curr, 0);
 }
 static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags)
 {
@@ -350,7 +356,7 @@ static struct sched_grr_entity *pick_next_grr_entity(struct rq *rq,
 	struct sched_grr_entity *next = NULL;
 	struct list_head *queue;
 
-	first = &grr_rq->run_queue
+	first = &grr_rq->run_queue;
 	queue = &first->run_list;
 	next = list_entry(queue->next, struct sched_grr_entity, run_list);
 
@@ -386,7 +392,7 @@ static void put_prev_task_grr(struct rq *rq, struct task_struct *prev)
 	update_curr_grr(rq);
 	/*Wendan Kang: there is more we can do here*/
 }
-static void set_curr_task_wrr(struct rq *rq)
+static void set_curr_task_grr(struct rq *rq)
 {
 	struct task_struct *p = rq->curr;
 	p->se.exec_start = rq->clock_task;
@@ -417,9 +423,9 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	 * Requeue to the end of queue if we (and all of our ancestors) are the
 	 * only element on the queue
 	 */
-	for_each_sched_rt_entity(rt_se) {
-		if (rt_se->run_list.prev != rt_se->run_list.next) {
-			requeue_task_rt(rq, p, 0);
+	for_each_sched_grr_entity(grr_se) {
+		if (grr_se->run_list.prev != grr_se->run_list.next) {
+			requeue_task_grr(rq, p, 0);
 			set_tsk_need_resched(p);
 			return;
 		}
@@ -509,10 +515,8 @@ static int find_lowest_rq(struct task_struct *task)
 static int
 select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 {
-	struct task_struct *curr;
-	struct rq *rq;
 	int cpu;
-
+	int target;
 	cpu = task_cpu(p);
 
 	if (p->grr.nr_cpus_allowed == 1)
@@ -524,7 +528,7 @@ select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 
 
 	rcu_read_lock();
-	int target = find_lowest_rq(p);
+	target = find_lowest_rq(p);
 	if (target != -1)
 		cpu = target;
 	rcu_read_unlock();
@@ -541,7 +545,7 @@ static void rq_offline_grr(struct rq *rq)
 static void pre_schedule_grr(struct rq *rq, struct task_struct *prev)
 {
 }
-static void post_schedule_wrr(struct rq *rq)
+static void post_schedule_grr(struct rq *rq)
 {
 }
 static void task_woken_grr(struct rq *rq, struct task_struct *p)
@@ -553,14 +557,6 @@ static void switched_from_grr(struct rq *rq, struct task_struct *p)
 
 #endif
 /***************************************************************/
-
-static void task_tick_grr(struct rq *rq, struct task_struct *curr, int queued)
-{
-}
-
-static void set_curr_task_grr(struct rq *rq)
-{
-}
 
 static void switched_to_grr(struct rq *rq, struct task_struct *p)
 {
@@ -582,7 +578,7 @@ static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task)
  * Simple, special scheduling class for the per-CPU grr tasks:
  */
 const struct sched_class grr_sched_class = {
-	.next 		= &fair_sched_class              /*done*/
+	.next 		= &fair_sched_class,              /*done*/
 	.enqueue_task		= enqueue_task_grr,      /*done*/
 	.dequeue_task		= dequeue_task_grr,      /*done*/
 	.yield_task		= yield_task_grr,            /*done*/

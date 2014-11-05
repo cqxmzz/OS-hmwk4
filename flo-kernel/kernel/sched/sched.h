@@ -127,12 +127,12 @@ struct task_group {
 #endif
 
 /*Wendan Kang*/
-#ifdef CONFIG_GRR_GROUP_SCHED
+//#ifdef CONFIG_GRR_GROUP_SCHED
 	struct sched_grr_entity **grr_se;
 	struct grr_rq **grr_rq;
 
 	struct grr_bandwidth grr_bandwidth; /*???*/
-#endif
+//#endif
 
 	struct rcu_head rcu;
 	struct list_head list;
@@ -331,13 +331,13 @@ struct grr_rq {
 	unsigned long size;
 	/* This struct is defined in sched.h  */
 	struct sched_grr_entity run_queue;
-	/* A lock to protect the WRR Run queue list */
-	raw_spinlock_t grr_rq_lock;
+	/* A lock to protect the GRR Run queue list */
+	spinlock_t grr_rq_lock;
 	/* Currently running entity on this GRR run queue
 	 * It's NULL if nothing is running */
 	struct sched_grr_entity *curr;
 
-#ifdef CONFIG_GRR_GROUP_SCHED
+//#ifdef CONFIG_GRR_GROUP_SCHED
 	struct rq *rq;	/* cpu runqueue to which this cfs_rq is attached */
 
 	/*
@@ -383,7 +383,7 @@ struct grr_rq {
 	int throttled, throttle_count;
 	struct list_head throttled_list;
 #endif /* CONFIG_GRR_BANDWIDTH */
-#endif /* CONFIG_GRR_GROUP_SCHED */
+//#endif /* CONFIG_GRR_GROUP_SCHED */
 
 
 
@@ -459,9 +459,9 @@ struct rq {
 #ifdef CONFIG_RT_GROUP_SCHED
 	struct list_head leaf_rt_rq_list;
 #endif
-#ifdef CONFIG_GRR_GROUP_SCHED /*Wendan Kang*/
+//#ifdef CONFIG_GRR_GROUP_SCHED /*Wendan Kang*/
 	struct list_head leaf_grr_rq_list;
-#endif
+//#endif
 
 	/*
 	 * This is part of a global counter where only the total sum
@@ -1237,7 +1237,7 @@ extern void print_rt_stats(struct seq_file *m, int cpu);
 
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq);
-extern void init_grr_rq(); /*Wendan Kang*/
+extern void init_grr_rq(struct grr_rq *grr_rq); /*Wendan Kang*/
 extern void unthrottle_offline_cfs_rqs(struct rq *rq);
 
 extern void account_cfs_bandwidth_used(int enabled, int was_enabled);

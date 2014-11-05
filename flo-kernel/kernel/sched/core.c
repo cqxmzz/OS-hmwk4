@@ -6962,9 +6962,9 @@ void __init sched_init(void)
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
 #endif
 /*Wendan Kang*/
-#ifdef CONFIG_GRR_GROUP_SCHED
+//#ifdef CONFIG_GRR_GROUP_SCHED
 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
-#endif
+//#endif
 #ifdef CONFIG_CPUMASK_OFFSTACK
 	alloc_size += num_possible_cpus() * cpumask_size();
 #endif
@@ -6988,14 +6988,14 @@ void __init sched_init(void)
 
 #endif /* CONFIG_RT_GROUP_SCHED */
 /*Wendan Kang*/
-#ifdef CONFIG_GRR_GROUP_SCHED
+//#ifdef CONFIG_GRR_GROUP_SCHED
 		root_task_group.grr_se = (struct sched_grr_entity **)ptr;
 		ptr += nr_cpu_ids * sizeof(void **);
 
 		root_task_group.grr_rq = (struct grr_rq **)ptr;
 		ptr += nr_cpu_ids * sizeof(void **);
 
-#endif /* CONFIG_RT_GROUP_SCHED */
+//#endif /* CONFIG_RT_GROUP_SCHED */
 #ifdef CONFIG_CPUMASK_OFFSTACK
 		for_each_possible_cpu(i) {
 			per_cpu(load_balance_tmpmask, i) = (void *)ptr;
@@ -7078,10 +7078,10 @@ void __init sched_init(void)
 		init_tg_rt_entry(&root_task_group, &rq->rt, NULL, i, NULL);
 #endif
 /*Wendan Kang*/
-#ifdef CONFIG_GRR_GROUP_SCHED
+//#ifdef CONFIG_GRR_GROUP_SCHED
 		INIT_LIST_HEAD(&rq->leaf_rt_rq_list);
 		/*may need more..*/
-#endif
+//#endif
 
 		for (j = 0; j < CPU_LOAD_IDX_MAX; j++)
 			rq->cpu_load[j] = 0;
