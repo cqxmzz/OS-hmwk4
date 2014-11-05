@@ -81,14 +81,16 @@
 #include <asm/paravirt.h>
 #endif
 
-#include "grr.c"
 #include "sched.h"
 #include "../workqueue_sched.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
- /*define timer for load balance*/
+
+/*define timer for load balance*/
 static struct hrtimer grr_balance_timer;
+
+static enum hrtimer_restart print_current_time(struct hrtimer *timer);
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
