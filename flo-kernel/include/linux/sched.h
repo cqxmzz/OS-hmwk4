@@ -1265,12 +1265,13 @@ struct sched_grr_entity {
 	 * define in this file, too.
 	 */
 	unsigned int time_slice;
-	
+#ifdef CONFIG_GRR_GROUP_SCHED	
 	struct sched_grr_entity	*parent;
 	/* rq on which this entity is (to be) queued: */
 	struct grr_rq		*grr_rq;
 	/* rq "owned" by this entity/group: */
 	struct grr_rq		*my_q;
+#endif
 };
 
 /*
