@@ -67,6 +67,57 @@ void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
 	grr_se->parent = parent;
 	INIT_LIST_HEAD(&grr_se->run_list);
 }
+/* Wendan Kang*/
+void free_grr_sched_group(struct task_group *tg)
+{
+	int i;
+	for_each_possible_cpu(i) {
+		if (tg->grr_rq)
+			kfree(tg->grr_rq[i]);
+		if (tg->se)
+			kfree(tg->grr_se[i]);
+	}
+
+	kfree(tg->grr_rq);
+	kfree(tg->grr_se);
+}
+/* Wendan Kang*/
+int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent)
+{
+	struct grr_rq *grr_rq;
+	struct sched_grr_entity *grr_se;
+	int i;
+
+	tg->grr_rq = kzalloc(sizeof(grr_rq) * nr_cpu_ids, GFP_KERNEL);
+	if (!tg->grr_rq)
+		goto err;
+	tg->grr_se = kzalloc(sizeof(grr_se) * nr_cpu_ids, GFP_KERNEL);
+	if (!tg->grr_se)
+		goto err;
+
+
+	for_each_possible_cpu(i) {
+		grr_rq = kzalloc_node(sizeof(struct grr_rq),
+				      GFP_KERNEL, cpu_to_node(i));
+		if (!grr_rq)
+			goto err;
+
+		grr_se = kzalloc_node(sizeof(struct sched_entity),
+				  GFP_KERNEL, cpu_to_node(i));
+		if (!grr_se)
+			goto err_free_rq;
+
+		init_grr_rq(grr_rq);
+		init_tg_grr_entry(tg, grr_rq, grr_se, i, parent->se[i]);
+	}
+
+	return 1;
+
+err_free_rq:
+	kfree(grr_rq);
+err:
+	return 0;
+}
 #else /* !CONFIG_GRR_GROUP_SCHED */
 
 /*Qiming Chen*/
@@ -92,6 +143,13 @@ static inline struct grr_rq *grr_rq_of_se(struct sched_grr_entity *grr_se)
 static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 {
 	return NULL;
+}
+void free_fair_sched_group(struct task_group *tg)
+{
+}
+int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent)
+{
+	return 1;
 }
 /* CONFIG_GRR_GROUP_SCHED */
 #endif 

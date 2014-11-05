@@ -7151,6 +7151,9 @@ void __init sched_init(void)
 	if (cpu_isolated_map == NULL)
 		zalloc_cpumask_var(&cpu_isolated_map, GFP_NOWAIT);
 #endif
+	/* Wendan Kang: should we change that to init_sched_grr_class?
+	 * Because we use current->sched_class = &grr_sched_class; ?
+	 */
 	init_sched_fair_class();
 
 	scheduler_running = 1;
@@ -7264,7 +7267,7 @@ void normalize_rt_tasks(void)
 
 	read_unlock_irqrestore(&tasklist_lock, flags);
 }
-
+/* Wendan Kang: do we need to add normalize_grr_task?*/
 #endif /* CONFIG_MAGIC_SYSRQ */
 
 #if defined(CONFIG_IA64) || defined(CONFIG_KGDB_KDB)
@@ -7322,6 +7325,8 @@ static void free_sched_group(struct task_group *tg)
 {
 	free_fair_sched_group(tg);
 	free_rt_sched_group(tg);
+	/* Wendan Kang*/
+	free_grr_sched_group(tg);
 	autogroup_free(tg);
 	kfree(tg);
 }
@@ -7340,6 +7345,10 @@ struct task_group *sched_create_group(struct task_group *parent)
 		goto err;
 
 	if (!alloc_rt_sched_group(tg, parent))
+		goto err;
+
+	/* Wendan Kang*/
+	if (!alloc_grr_sched_group(tg, parent))
 		goto err;
 
 	spin_lock_irqsave(&task_group_lock, flags);
