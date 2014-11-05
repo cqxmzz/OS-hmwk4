@@ -44,6 +44,9 @@
 /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
 #define SCHED_RESET_ON_FORK     0x40000000
 
+/* rebelance time period in nano seconds */
+#define SCHED_GRR_REBALANCE_TIME_PERIOD_NS 500000000
+
 #ifdef __KERNEL__
 
 struct sched_param {

@@ -6888,10 +6888,9 @@ static int cpuset_cpu_inactive(struct notifier_block *nfb, unsigned long action,
 
 void __init sched_init_smp(void)
 {
-	/* Wendan Kang: ATTENTION!!! WHAT IS SCHED_WRR_REBALANCE_TIME_PERIOD_NS!!FIND THAT!!*/
 	ktime_t period_ktime;
 	struct timespec period = {
-		.tv_nsec = SCHED_WRR_REBALANCE_TIME_PERIOD_NS,
+		.tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
 		.tv_sec = 0
 	};
 	cpumask_var_t non_isolated_cpus;
@@ -6916,7 +6915,7 @@ void __init sched_init_smp(void)
 
 	init_hrtick();
 
-	/* start my own wrr rebalance timer */
+	/* start my own grr rebalance timer */
 	period_ktime = timespec_to_ktime(period);
 	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
 
