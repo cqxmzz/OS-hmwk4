@@ -8,14 +8,15 @@
  */
 
 
-/*Qiming Chen*/
-#define for_each_sched_grr_entity(grr_se) \
-	for (; grr_se; grr_se = grr_se->parent)
 
 /**************************************************************
  * GRR operations on generic schedulable entities:
  */
 #ifdef CONFIG_GRR_GROUP_SCHED
+
+/*Qiming Chen*/
+#define for_each_sched_grr_entity(grr_se) \
+	for (; grr_se; grr_se = grr_se->parent)
 
 #define grr_entity_is_task(grr_se) (!(grr_se)->my_q)
 
@@ -38,8 +39,14 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 
 #else /* !CONFIG_GRR_GROUP_SCHED */
 
+/*Qiming Chen*/
+#define for_each_sched_grr_entity(rt_se) \
+	for (; grr_se; grr_se = NULL)
+
 #define grr_entity_is_task(grr_se) (1)
 
+
+/* We probabily don't need this if we have the task pointer Qiming Chen*/
 static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
 {
 	return container_of(grr_se, struct task_struct, grr);
@@ -56,7 +63,9 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 {
 	return NULL;
 }
-#endif
+/* CONFIG_GRR_GROUP_SCHED */
+#endif 
+
 
 /***************************************************************/
 
@@ -84,7 +93,6 @@ static inline int on_grr_rq(struct sched_grr_entity *grr_se)
 static void update_curr_grr(struct rq *rq)
 {
 	struct task_struct *curr = rq->curr;
-
 	u64 delta_exec;
 
 	if (curr->sched_class != &grr_sched_class)
@@ -152,6 +160,7 @@ static enum hrtimer_restart print_current_time(struct hrtimer *timer)
  	hrtimer_forward(timer, timer->base->get_time(), period_ktime);
  	return HRTIMER_RESTART;
 }
+
 #ifdef CONFIG_SMP
 static void grr_rq_load_balance(void)
 {
@@ -264,6 +273,7 @@ void init_grr_rq(struct grr_rq *grr_rq)
 
 	grr_se->task = NULL;
 	grr_se->time_slice = 0;
+	/* group? Qiming Chen */
 }
 
 /* Initializes the given task which is meant to be handled/processed
@@ -281,6 +291,7 @@ static void init_task_grr(struct task_struct *p)
 
 	/* Initialize the list head just to be safe */
 	INIT_LIST_HEAD(&grr_se->run_list);
+	/* group? Qiming Chen*/
 }
 
 void init_sched_grr_class(void)
@@ -299,7 +310,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 
 	grr_se = &grr_rq->run_queue;
 
-	init_task_grr(p); /* initializes the wrr_entity in task_struct */
+	init_task_grr(p); /* initializes the grr_entity in task_struct */
 	new_se = &p->grr;
 
 	/* If on rq already, don't add it */
@@ -315,7 +326,6 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	/* update statistics counts */
 	++grr_rq->grr_nr_running;
 	++grr_rq->size;
-
 
 	spin_unlock(&grr_rq->grr_rq_lock);
 }
@@ -615,6 +625,7 @@ const struct sched_class grr_sched_class = {
 
 #ifdef CONFIG_SMP
 	.select_task_rq		= select_task_rq_grr,    /*done*/
+	.set_cpus_allowed       = set_cpus_allowed_grr,
 	.rq_online              = rq_online_grr,     /*dummy function*/
 	.rq_offline             = rq_offline_grr,    /*dummy function*/
 	.pre_schedule		= pre_schedule_grr,      /*dummy function*/
