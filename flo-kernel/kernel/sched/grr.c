@@ -224,11 +224,6 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 	}
 }
 
-static void task_fork_grr(struct task_struct *p)
-{
-	init_task_grr(p);
-}
-
 /***************************************************************/
 
 /***************************************************************
@@ -380,6 +375,12 @@ static void init_task_grr(struct task_struct *p)
 	/* Initialize the list head just to be safe */
 	INIT_LIST_HEAD(&grr_se->run_list);
 	/* group? Qiming Chen*/
+}
+
+
+static void task_fork_grr(struct task_struct *p)
+{
+	init_task_grr(p);
 }
 
 void init_sched_grr_class(void)
