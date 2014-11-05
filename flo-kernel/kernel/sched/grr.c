@@ -144,13 +144,7 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 {
 	return NULL;
 }
-void free_fair_sched_group(struct task_group *tg)
-{
-}
-int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent)
-{
-	return 1;
-}
+
 /* CONFIG_GRR_GROUP_SCHED */
 #endif 
 
@@ -235,14 +229,13 @@ static void grr_rq_load_balance(void)
 {
  	int cpu;
  	int dest_cpu; /* id of cpu to move to */
- 	struct rq *rq;
- 	struct grr_rq *lowest_grr_rq, *highest_grr_rq, *curr_grr_rq;
+ 	struct rq *rq, *highest_rq, *lowest_rq;
  	struct sched_grr_entity *highest_task;
  	struct list_head *head;
  	struct task_struct *task_to_move;
  	struct rq *rq_of_task_to_move;
  	struct rq *rq_of_lowest_grr; /*rq of thing with smallest weight */
-
+	struct grr_rq *lowest_grr_rq = NULL, *highest_grr_rq = NULL, *curr_grr_rq;
  	int lowest_size = INT_MAX;
  	int highest_size = INT_MIN;
 
@@ -255,10 +248,12 @@ static void grr_rq_load_balance(void)
  		if (curr_grr_rq->size > highest_size) {
  			highest_grr_rq = curr_grr_rq;
  			highest_size = curr_grr_rq->size;
+ 			highest_rq = rq;
  		}
  		if (curr_grr_rq->size < lowest_size) {
  			lowest_grr_rq = curr_grr_rq;
  			lowest_size = curr_grr_rq->size;
+ 			lowest_rq = rq;
  		}
  	}
  	
@@ -268,7 +263,7 @@ static void grr_rq_load_balance(void)
 
  	/* See if we can do move  */
  	rcu_read_lock();
- 	double_lock_balance(highest_grr_rq, lowest_grr_rq);
+ 	double_lock_balance(highest_rq, lowest_rq);
 
  	/* See if we can do move  */
  	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
@@ -284,10 +279,9 @@ static void grr_rq_load_balance(void)
  			activate_task(rq_of_lowest_grr , task_to_move, 0);
  		}
  	}
- 	
 
 	rcu_read_unlock();
- 	double_unlock_balance(highest_grr_rq, lowest_grr_rq);
+ 	double_unlock_balance(highest_rq, lowest_rq);
 }
 #endif
 
