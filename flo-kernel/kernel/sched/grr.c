@@ -230,21 +230,6 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 * load balance implementation
 */
 
-static enum hrtimer_restart print_current_time(struct hrtimer *timer)
-{
- 	ktime_t period_ktime;
- 	struct timespec period = {
- 		.tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
- 		.tv_sec = 0
-	};
- 	period_ktime = timespec_to_ktime(period);
-
- 	grr_rq_load_balance();
-
- 	hrtimer_forward(timer, timer->base->get_time(), period_ktime);
- 	return HRTIMER_RESTART;
-}
-
 #ifdef CONFIG_SMP
 static void grr_rq_load_balance(void)
 {
@@ -324,6 +309,20 @@ static void grr_rq_load_balance(void)
 }
 #endif
 
+static enum hrtimer_restart print_current_time(struct hrtimer *timer)
+{
+        ktime_t period_ktime;
+        struct timespec period = {
+                .tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
+                .tv_sec = 0
+        };
+        period_ktime = timespec_to_ktime(period);
+
+        grr_rq_load_balance();
+
+        hrtimer_forward(timer, timer->base->get_time(), period_ktime);
+        return HRTIMER_RESTART;
+}
 
 /*Wendan Kang*/
 /*The parameter(s) may have two options considering fair.c and rt.c:
@@ -691,7 +690,10 @@ static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task)
 		return -EINVAL;
 	return GRR_TIMESLICE;
 }
-
+static void set_cpus_allowed_grr(struct task_struct *p,
+				const struct cpumask *new_mask)
+{
+}
 #endif
 /***************************************************************/
 
