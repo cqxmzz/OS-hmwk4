@@ -7399,6 +7399,9 @@ void sched_destroy_group(struct task_group *tg)
  *	by now. This function just updates tsk->se.cfs_rq and tsk->se.parent to
  *	reflect its new group.
  */
+/* Wendan Kang: not sure whether we need to do something about 
+ * move task below. Scared by what it did of RT. T_T
+ */
 void sched_move_task(struct task_struct *tsk)
 {
 	int on_rq, running;
@@ -8092,7 +8095,7 @@ static u64 cpu_rt_period_read_uint(struct cgroup *cgrp, struct cftype *cft)
 	return sched_group_rt_period(cgroup_tg(cgrp));
 }
 #endif /* CONFIG_RT_GROUP_SCHED */
-
+/* Wendan Kang: What's this...*/
 static struct cftype cpu_files[] = {
 	{
 		.name = "notify_on_migrate",
