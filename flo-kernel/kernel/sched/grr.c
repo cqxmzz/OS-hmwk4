@@ -500,12 +500,8 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 
 	update_curr_grr(rq);
 
-	watchdog(rq, p);
+	/* watchdog(rq, p); */
 
-	/*
-	 * RR tasks need a special form of timeslice management.
-	 * FIFO tasks have no timeslices.
-	 */
 	if (p->policy != SCHED_GRR)
 		return;
 
@@ -515,7 +511,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	p->grr.time_slice = GRR_TIMESLICE;
 
 	/*
-	 * Requeue to the end of queue if we (and all of our ancestors) are the
+	 * Requeue to the end of queue if we (and all of our ancestors) are not the
 	 * only element on the queue
 	 */
 	for_each_sched_grr_entity(grr_se) {
