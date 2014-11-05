@@ -130,8 +130,6 @@ struct task_group {
 #ifdef CONFIG_GRR_GROUP_SCHED
 	struct sched_grr_entity **grr_se;
 	struct grr_rq **grr_rq;
-
-	struct grr_bandwidth grr_bandwidth; /*???*/
 #endif
 
 	struct rcu_head rcu;
@@ -351,7 +349,7 @@ struct grr_rq {
 	int on_list;
 	struct list_head leaf_grr_rq_list;
 	struct task_group *tg;	/* group that "owns" this runqueue */
-
+/* Wendan Kang: This part should still be considered in load_balance*/
 #ifdef CONFIG_SMP
 	/*
 	 *   h_load = weight * f(tg)
@@ -374,19 +372,7 @@ struct grr_rq {
 
 	unsigned long load_contribution;
 #endif /* CONFIG_SMP */
-#ifdef CONFIG_GRR_BANDWIDTH
-	int runtime_enabled;
-	u64 runtime_expires;
-	s64 runtime_remaining;
-
-	u64 throttled_timestamp;
-	int throttled, throttle_count;
-	struct list_head throttled_list;
-#endif /* CONFIG_GRR_BANDWIDTH */
 #endif /* CONFIG_GRR_GROUP_SCHED */
-
-
-
 };
 
 #ifdef CONFIG_SMP
