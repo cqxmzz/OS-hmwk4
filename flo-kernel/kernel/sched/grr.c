@@ -27,6 +27,7 @@ static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
 #endif
 	return container_of(grr_se, struct task_struct, grr);
 }
+
 /* runqueue on which this entity is (to be) queued */
 static inline struct grr_rq *grr_rq_of_se(struct sched_grr_entity *grr_se)
 {
@@ -36,6 +37,7 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 {
 	return grr_se->my_q;
 }
+
 /* Wendan Kang*/
 void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
 			struct sched_grr_entity *grr_se, int cpu,
@@ -49,8 +51,6 @@ void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
 	/* allow initial update_cfs_load() to truncate */
 	grr_rq->load_stamp = 1;
 #endif
-	
-
 	tg->grr_rq[cpu] = grr_rq;
 	tg->grr_se[cpu] = grr_se;
 
@@ -443,10 +443,6 @@ static void yield_task_grr(struct rq *rq)
 {
 	requeue_task_grr(rq, rq->curr, 0);
 }
-static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags)
-{
-	/*preempt happenned because its time slice is run up.*/
-}
 
 static struct sched_grr_entity *pick_next_grr_entity(struct rq *rq,
 						   struct grr_rq *grr_rq)
@@ -530,17 +526,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 		}
 	}
 }
-/*
- * Priority of the task has changed. This may cause
- * us to initiate a push or pull.
- */
-static void
-prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio)
-{
-	/* There is only GRR (Round Robin) policy in grr schedule class,
-	 * no need to implement this fuction.
-	 */
-}
+
 /* Wendan Kang
  * This function is called when a running process has changed its scheduler
  * and chosen to make this scheduler (GRR), its scheduler.
@@ -559,7 +545,6 @@ static void switched_to_grr(struct rq *rq, struct task_struct *p)
 		return;
 
 	init_task_grr(p);
-	/* Qiming Chen very worried */
 }
 /***************************************************************
 * SMP Function below
@@ -665,43 +650,47 @@ static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 out:
 	return cpu;
 }
-static void rq_online_grr(struct rq *rq)
-{
+
+static void task_woken_grr(struct rq *rq, struct task_struct *p) {
+	if (!p->se.on_rq)
+		return;
+	init_task_grr(p);
 }
-static void rq_offline_grr(struct rq *rq)
-{
-}
-static void pre_schedule_grr(struct rq *rq, struct task_struct *prev)
-{
-}
-static void post_schedule_grr(struct rq *rq)
-{
-}
-static void task_woken_grr(struct rq *rq, struct task_struct *p)
-{
-	/* worried Qiming Chen */
-}
-static void switched_from_grr(struct rq *rq, struct task_struct *p)
-{
-	/* worried Qiming Chen */
-}
+
 static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
 	if (task == NULL)
 		return -EINVAL;
 	return GRR_TIMESLICE;
 }
-static void set_cpus_allowed_grr(struct task_struct *p,
-				const struct cpumask *new_mask)
-{
+
+static void set_cpus_allowed_grr(struct task_struct *p, const struct cpumask *new_mask) {
+	/* Need implement Qiming Chen*/
 }
+
+
+/* leave then empty is OK */
+static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags) {
+}
+
+static void rq_online_grr(struct rq *rq) {
+}
+
+static void rq_offline_grr(struct rq *rq) {
+}
+
+static void pre_schedule_grr(struct rq *rq, struct task_struct *prev) {
+}
+
+static void post_schedule_grr(struct rq *rq) {
+}
+
+static void switched_from_grr(struct rq *rq, struct task_struct *p) {
+}
+
+static void prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio) {
+}
+
 #endif
-/***************************************************************/
-
-/***************************************************************
- * extra
- */
-
-
 
 /*
  * Simple, special scheduling class for the per-CPU grr tasks:
