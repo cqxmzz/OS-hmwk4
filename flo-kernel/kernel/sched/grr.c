@@ -55,6 +55,10 @@ static inline struct grr_rq *grr_rq_of_se(struct sched_grr_entity *grr_se)
 
 	return &rq->grr;
 }
+static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
+{
+	return NULL;
+}
 #endif
 
 /***************************************************************/
