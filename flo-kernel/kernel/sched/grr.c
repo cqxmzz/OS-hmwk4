@@ -237,27 +237,20 @@ static void grr_rq_load_balance(void)
  	int dest_cpu; /* id of cpu to move to */
  	struct rq *rq;
  	struct grr_rq *lowest_grr_rq, *highest_grr_rq, *curr_grr_rq;
- 	struct sched_grr_entity *heaviest_task_on_highest_grr_rq;
- 	struct sched_grr_entity *curr_entity;
- 	struct list_head *curr;
+ 	struct sched_grr_entity *highest_task;
  	struct list_head *head;
  	struct task_struct *task_to_move;
  	struct rq *rq_of_task_to_move;
- 	struct rq *rq_of_lowest_qrr; /*rq of thing with smallest weight */
+ 	struct rq *rq_of_lowest_grr; /*rq of thing with smallest weight */
 
- 	int counter = 1;
  	int lowest_size = INT_MAX;
  	int highest_size = INT_MIN;
 
- 	int largest_size = INT_MIN; /* used for load imblance issues*/
-
- 	curr_entity = NULL;
-
+	/* get highest and lowest grr_rq Qiming Chen */
  	for_each_online_cpu(cpu) {
  		rq = cpu_rq(cpu);
  		if (rq == NULL)
  			continue;
-
  		curr_grr_rq = &rq->grr;
  		if (curr_grr_rq->size > highest_size) {
  			highest_grr_rq = curr_grr_rq;
@@ -267,45 +260,34 @@ static void grr_rq_load_balance(void)
  			lowest_grr_rq = curr_grr_rq;
  			lowest_size = curr_grr_rq->size;
  		}
- 		/* confirm if you don't have to do anything extra */
- 		++counter;
  	}
-
- 	if (lowest_grr_rq == highest_grr_rq)
- 		return;
+ 	
  	/* See if we can do move  */
- 	/* Need to make sure that we don't cause a load imbalance */
- 	head = &highest_grr_rq->run_queue.run_list;
- 	spin_lock(&highest_grr_rq->grr_rq_lock);
- 	for (curr = head->next; curr != head; curr = curr->next) {
- 		curr_entity = list_entry(curr,
- 					struct sched_grr_entity,
- 					run_list);
+ 	if (lowest_grr_rq == highest_grr_rq || highest_size - lowest_size < 2)
+ 		return;
 
- 		if (curr_entity->size > largest_size) {
-			heaviest_task_on_highest_grr_rq = curr_entity;
- 			largest_weight = curr_entity->weight;
+ 	/* See if we can do move  */
+ 	rcu_read_lock();
+ 	double_lock_balance(highest_grr_rq, lowest_grr_rq);
+
+ 	/* See if we can do move  */
+ 	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
+ 		head = &highest_grr_rq->run_queue.run_list;
+ 		if (head->next != head) {
+ 			highest_task = list_entry(head, struct sched_grr_entity, run_list);
+			rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
+ 			dest_cpu = rq_of_lowest_grr->cpu;
+ 			task_to_move = container_of(highest_task, struct task_struct, grr);
+ 			rq_of_task_to_move = task_rq(task_to_move);
+ 			deactivate_task(rq_of_task_to_move, task_to_move, 0);
+ 			set_task_cpu(task_to_move, dest_cpu);
+ 			activate_task(rq_of_lowest_grr , task_to_move, 0);
  		}
  	}
- 	spin_unlock(&highest_grr_rq->grr_rq_lock);
+ 	
 
- 	if (heaviest_task_on_highest_grr_rq->weight +
- 			lowest_grr_rq->total_weight >=
- 				highest_grr_rq->total_weight)
- 		/* there is an imbalance issues here */ {
- 		return;
- 	}
- 	/* Okay, let's move the task */
- 	rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
- 	dest_cpu = rq_of_lowest_grr->cpu;
- 	task_to_move = container_of(heaviest_task_on_highest_grr_rq,
- 				    struct task_struct, grr);
-
- 	rq_of_task_to_move = task_rq(task_to_move);
- 	deactivate_task(rq_of_task_to_move, task_to_move, 0);
-
- 	set_task_cpu(task_to_move, dest_cpu);
- 	activate_task(rq_of_lowest_grr , task_to_move, 0);
+	rcu_read_unlock();
+ 	double_unlock_balance(highest_grr_rq, lowest_grr_rq);
 }
 #endif
 
