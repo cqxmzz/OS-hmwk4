@@ -229,12 +229,13 @@ static void grr_rq_load_balance(void)
 {
  	int cpu;
  	int dest_cpu; /* id of cpu to move to */
- 	struct rq *rq, *highest_rq, *lowest_rq;
+ 	struct rq *rq;
  	struct sched_grr_entity *highest_task;
  	struct list_head *head;
  	struct task_struct *task_to_move;
  	struct rq *rq_of_task_to_move;
  	struct rq *rq_of_lowest_grr; /*rq of thing with smallest weight */
+ 	struct rq *highest_rq = NULL, *lowest_rq = NULL;
 	struct grr_rq *lowest_grr_rq = NULL, *highest_grr_rq = NULL, *curr_grr_rq;
  	int lowest_size = INT_MAX;
  	int highest_size = INT_MIN;
