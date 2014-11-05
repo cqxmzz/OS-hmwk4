@@ -91,8 +91,16 @@
 static struct hrtimer grr_balance_timer;
 
 enum hrtimer_restart print_current_time(struct hrtimer *timer);
+void free_grr_sched_group(struct task_group *tg);
+int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent);
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
+
+/* Qiming Chen */
+SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
+{
+	return 1;
+}
 
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
 {
