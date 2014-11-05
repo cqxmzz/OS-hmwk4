@@ -12,9 +12,6 @@
 #define for_each_sched_grr_entity(grr_se) \
 	for (; grr_se; grr_se = grr_se->parent)
 
-
-const struct sched_class grr_sched_class;
-
 /**************************************************************
  * GRR operations on generic schedulable entities:
  */
