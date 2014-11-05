@@ -36,7 +36,37 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 {
 	return grr_se->my_q;
 }
+/* Wendan Kang*/
+void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
+			struct sched_grr_entity *grr_se, int cpu,
+			struct sched_grr_entity *parent)
+{
+	struct rq *rq = cpu_rq(cpu);
 
+	grr_rq->tg = tg;
+	grr_rq->rq = rq;
+#ifdef CONFIG_SMP
+	/* allow initial update_cfs_load() to truncate */
+	grr_rq->load_stamp = 1;
+#endif
+	
+
+	tg->grr_rq[cpu] = grr_rq;
+	tg->grr_se[cpu] = grr_se;
+
+	/* se could be NULL for root_task_group */
+	if (!grr_se)
+		return;
+
+	if (!parent)
+		grr_se->grr_rq = &rq->grr;
+	else
+		grr_se->grr_rq = parent->my_q;
+
+	grr_se->my_q = grr_rq;
+	grr_se->parent = parent;
+	INIT_LIST_HEAD(&grr_se->run_list);
+}
 #else /* !CONFIG_GRR_GROUP_SCHED */
 
 /*Qiming Chen*/

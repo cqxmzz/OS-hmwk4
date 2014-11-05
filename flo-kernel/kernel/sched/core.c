@@ -7018,7 +7018,9 @@ void __init sched_init(void)
 			global_rt_period(), global_rt_runtime());
 #endif /* CONFIG_RT_GROUP_SCHED */
 
-/*Wendan Kang: Do we need bandwidth?*/
+/* Wendan Kang: Do we need bandwidth?
+ * Wendan Kang: We don't.
+ */
 
 #ifdef CONFIG_CGROUP_SCHED
 	list_add(&root_task_group.list, &task_groups);
@@ -7079,7 +7081,7 @@ void __init sched_init(void)
 /*Wendan Kang*/
 #ifdef CONFIG_GRR_GROUP_SCHED
 		INIT_LIST_HEAD(&rq->leaf_rt_rq_list);
-		/*may need more..*/
+		init_tg_grr_entry(&root_task_group, &rq->grr, NULL, i, NULL);
 #endif
 
 		for (j = 0; j < CPU_LOAD_IDX_MAX; j++)

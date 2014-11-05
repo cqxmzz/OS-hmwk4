@@ -203,6 +203,11 @@ extern void init_tg_rt_entry(struct task_group *tg, struct rt_rq *rt_rq,
 		struct sched_rt_entity *rt_se, int cpu,
 		struct sched_rt_entity *parent);
 
+/* Wendan Kang: may need extern some load balance function here*/
+extern void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
+		struct sched_grr_entity *grr_se, int cpu,
+		struct sched_grr_entity *parent);
+
 #else /* CONFIG_CGROUP_SCHED */
 
 struct cfs_bandwidth { };
