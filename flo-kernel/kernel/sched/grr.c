@@ -224,6 +224,12 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 		requeue_grr_entity(grr_rq, grr_se, head);
 	}
 }
+
+static void task_fork_grr(struct task_struct *p)
+{
+	init_task_grr(p);
+}
+
 /***************************************************************/
 
 /***************************************************************
@@ -283,29 +289,29 @@ static void grr_rq_load_balance(void)
  					run_list);
 
  		if (curr_entity->size > largest_size) {
-			heaviest_task_on_highest_wrr_rq = curr_entity;
+			heaviest_task_on_highest_grr_rq = curr_entity;
  			largest_weight = curr_entity->weight;
  		}
  	}
- 	spin_unlock(&highest_wrr_rq->wrr_rq_lock);
+ 	spin_unlock(&highest_grr_rq->grr_rq_lock);
 
- 	if (heaviest_task_on_highest_wrr_rq->weight +
- 			lowest_wrr_rq->total_weight >=
- 				highest_wrr_rq->total_weight)
+ 	if (heaviest_task_on_highest_grr_rq->weight +
+ 			lowest_grr_rq->total_weight >=
+ 				highest_grr_rq->total_weight)
  		/* there is an imbalance issues here */ {
  		return;
  	}
  	/* Okay, let's move the task */
- 	rq_of_lowest_wrr = container_of(lowest_wrr_rq, struct rq, wrr);
- 	dest_cpu = rq_of_lowest_wrr->cpu;
- 	task_to_move = container_of(heaviest_task_on_highest_wrr_rq,
- 				    struct task_struct, wrr);
+ 	rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
+ 	dest_cpu = rq_of_lowest_grr->cpu;
+ 	task_to_move = container_of(heaviest_task_on_highest_grr_rq,
+ 				    struct task_struct, grr);
 
  	rq_of_task_to_move = task_rq(task_to_move);
  	deactivate_task(rq_of_task_to_move, task_to_move, 0);
 
  	set_task_cpu(task_to_move, dest_cpu);
- 	activate_task(rq_of_lowest_wrr , task_to_move, 0);
+ 	activate_task(rq_of_lowest_grr , task_to_move, 0);
 }
 #endif
 

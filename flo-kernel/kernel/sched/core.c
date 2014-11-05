@@ -91,6 +91,7 @@
 static struct hrtimer grr_balance_timer;
 
 static enum hrtimer_restart print_current_time(struct hrtimer *timer);
+static void task_fork_grr(struct task_struct *p);
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
@@ -4079,8 +4080,8 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 		p->sched_class = &fair_sched_class;
 	set_load_weight(p);
 	/* Wendan Kang: Set the sched class for the grr policy */
-+	if (p->policy == SCHED_GRR)
-+		p->sched_class = &grr_sched_class;
+	if (p->policy == SCHED_GRR)
+		p->sched_class = &grr_sched_class;
 }
 
 /*
@@ -4124,7 +4125,7 @@ recheck:
 
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
 				policy != SCHED_NORMAL && policy != SCHED_BATCH &&
-				policy != SCHED_IDLE && && policy != SCHED_GRR) /*Wendan Kang*/
+				policy != SCHED_IDLE && policy != SCHED_GRR) /*Wendan Kang*/
 			return -EINVAL;
 	}
 
