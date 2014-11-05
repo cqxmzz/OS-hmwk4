@@ -90,8 +90,8 @@
 /*define timer for load balance*/
 static struct hrtimer grr_balance_timer;
 
-static enum hrtimer_restart print_current_time(struct hrtimer *timer);
-static void task_fork_grr(struct task_struct *p);
+enum hrtimer_restart print_current_time(struct hrtimer *timer);
+void task_fork_grr(struct task_struct *p);
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 

@@ -200,8 +200,7 @@ static void update_curr_grr(struct rq *rq)
  * Put task to the head or the end of the run list without the overhead of
  * dequeue followed by enqueue.
  */
-static void
-requeue_grr_entity(struct grr_rq *grr_rq, struct sched_grr_entity *grr_se, int head)
+static void requeue_grr_entity(struct grr_rq *grr_rq, struct sched_grr_entity *grr_se, int head)
 {
 	if (on_grr_rq(grr_se)) {
 		struct list_head *queue;
@@ -225,7 +224,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 	}
 }
 
-static void task_fork_grr(struct task_struct *p)
+void task_fork_grr(struct task_struct *p)
 {
 	init_task_grr(p);
 }
@@ -315,7 +314,7 @@ static void grr_rq_load_balance(void)
 }
 #endif
 
-static enum hrtimer_restart print_current_time(struct hrtimer *timer)
+enum hrtimer_restart print_current_time(struct hrtimer *timer)
 {
         ktime_t period_ktime;
         struct timespec period = {
