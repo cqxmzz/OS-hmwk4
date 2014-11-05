@@ -144,7 +144,7 @@ static enum hrtimer_restart print_current_time(struct hrtimer *timer)
 {
  	ktime_t period_ktime;
  	struct timespec period = {
- 		.tv_nsec = SCHED_WRR_REBALANCE_TIME_PERIOD_NS,
+ 		.tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
  		.tv_sec = 0
 	};
  	period_ktime = timespec_to_ktime(period);
@@ -267,7 +267,6 @@ void init_grr_rq(struct grr_rq *grr_rq)
 
 	grr_se->task = NULL;
 	grr_se->time_slice = 0;
-	grr_se->time_left = 0;
 }
 
 /* Initializes the given task which is meant to be handled/processed
