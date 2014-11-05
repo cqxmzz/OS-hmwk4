@@ -448,7 +448,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
  * us to initiate a push or pull.
  */
 static void
-prio_changed_rt(struct rq *rq, struct task_struct *p, int oldprio)
+prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio)
 {
 	/* There is only GRR (Round Robin) policy in grr schedule class,
 	 * no need to implement this fuction.
@@ -597,9 +597,6 @@ static void task_woken_grr(struct rq *rq, struct task_struct *p)
 static void switched_from_grr(struct rq *rq, struct task_struct *p)
 {
 	/* worried Qiming Chen */
-}
-static void prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio)
-{
 }
 static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
 	if (task == NULL)
