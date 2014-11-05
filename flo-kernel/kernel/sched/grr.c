@@ -224,7 +224,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 	}
 }
 
-void task_fork_grr(struct task_struct *p)
+static void task_fork_grr(struct task_struct *p)
 {
 	init_task_grr(p);
 }
@@ -719,6 +719,7 @@ const struct sched_class grr_sched_class = {
 	.pick_next_task		= pick_next_task_grr,    /*done*/
 	.put_prev_task		= put_prev_task_grr,     /*done*/
 
+	.task_fork		= task_fork_grr,    /*Qiming Chen*/
 #ifdef CONFIG_SMP
 	.select_task_rq		= select_task_rq_grr,    /*done*/
 	.set_cpus_allowed       = set_cpus_allowed_grr,

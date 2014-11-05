@@ -91,7 +91,6 @@
 static struct hrtimer grr_balance_timer;
 
 enum hrtimer_restart print_current_time(struct hrtimer *timer);
-void task_fork_grr(struct task_struct *p);
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
@@ -1793,9 +1792,6 @@ void sched_fork(struct task_struct *p)
 		 * fulfilled its duty:
 		 */
 		p->sched_reset_on_fork = 0;
-		/*Wendan Kang*/
-		if (p->policy == SCHED_GRR)
-			task_fork_grr(p);
 	}
 
 	if (!rt_prio(p->prio))
