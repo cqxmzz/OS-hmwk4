@@ -494,13 +494,31 @@ static void set_curr_task_grr(struct rq *rq)
 	rq->grr.curr = &p->grr;
 }
 
+static void watchdog(struct rq *rq, struct task_struct *p)
+{
+	unsigned long soft, hard;
+
+	/* max may change after cur was read, this will be fixed next tick */
+	soft = task_rlimit(p, RLIMIT_RTTIME);
+	hard = task_rlimit_max(p, RLIMIT_RTTIME);
+
+	if (soft != RLIM_INFINITY) {
+		unsigned long next;
+
+		p->rt.timeout++;
+		next = DIV_ROUND_UP(min(soft, hard), USEC_PER_SEC/HZ);
+		if (p->rt.timeout > next)
+			p->cputime_expires.sched_exp = p->se.sum_exec_runtime;
+	}
+}
+
 static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 {
 	struct sched_grr_entity *grr_se = &p->grr;
 
 	update_curr_grr(rq);
 
-	/* watchdog(rq, p); */
+	watchdog(rq, p);
 
 	if (p->policy != SCHED_GRR)
 		return;
@@ -537,9 +555,6 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
  * */
 static void switched_to_grr(struct rq *rq, struct task_struct *p)
 {
-	if (!p->se.on_rq)
-		return;
-
 	init_task_grr(p);
 }
 /***************************************************************
@@ -648,8 +663,6 @@ out:
 }
 
 static void task_woken_grr(struct rq *rq, struct task_struct *p) {
-	if (!p->se.on_rq)
-		return;
 	init_task_grr(p);
 }
 
