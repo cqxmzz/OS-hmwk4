@@ -1284,7 +1284,7 @@ struct sched_grr_entity {
 /*
  * default timeslice is 100 ms, only for GRR policy
  */
-#define GRR_TIMESLICE		100 /*???need to be sure, it is required to be 100 ms*/
+#define GRR_TIMESLICE		(100 * HZ / 1000)
 
 struct rcu_node;
 

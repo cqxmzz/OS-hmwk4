@@ -66,9 +66,6 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 /* CONFIG_GRR_GROUP_SCHED */
 #endif 
 
-
-/***************************************************************/
-
 /***************************************************************
 * Helping Methods
 */
@@ -139,8 +136,8 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 		requeue_grr_entity(grr_rq, grr_se, head);
 	}
 }
-
 /***************************************************************/
+
 /***************************************************************
 * load balance implementation
 */
@@ -154,9 +151,8 @@ static enum hrtimer_restart print_current_time(struct hrtimer *timer)
 	};
  	period_ktime = timespec_to_ktime(period);
 
-#ifdef WRR_LOAD_BALANCE
- 	wrr_rq_load_balance();
-#endif
+ 	grr_rq_load_balance();
+
  	hrtimer_forward(timer, timer->base->get_time(), period_ktime);
  	return HRTIMER_RESTART;
 }
@@ -476,6 +472,7 @@ static void switched_to_grr(struct rq *rq, struct task_struct *p)
 		return;
 
 	init_task_grr(p);
+	/* Qiming Chen very worried */
 }
 /***************************************************************
 * SMP Function below
@@ -558,8 +555,7 @@ static int find_lowest_rq(struct task_struct *task)
 	return -1;
 }
 
-static int
-select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
+static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 {
 	int cpu;
 	int target;
@@ -596,9 +592,19 @@ static void post_schedule_grr(struct rq *rq)
 }
 static void task_woken_grr(struct rq *rq, struct task_struct *p)
 {
+	/* worried Qiming Chen */
 }
 static void switched_from_grr(struct rq *rq, struct task_struct *p)
 {
+	/* worried Qiming Chen */
+}
+static void prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio)
+{
+}
+static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
+	if (task == NULL)
+		return -EINVAL;
+	return GRR_TIMESLICE;
 }
 
 #endif
