@@ -140,99 +140,99 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 * load balance implementation
 */
 
-// static enum hrtimer_restart print_current_time(struct hrtimer *timer)
-// {
-// 	ktime_t period_ktime;
-// 	struct timespec period = {
-// 		.tv_nsec = SCHED_WRR_REBALANCE_TIME_PERIOD_NS,
-// 		.tv_sec = 0
-// 	};
-// 	period_ktime = timespec_to_ktime(period);
+static enum hrtimer_restart print_current_time(struct hrtimer *timer)
+{
+ 	ktime_t period_ktime;
+ 	struct timespec period = {
+ 		.tv_nsec = SCHED_WRR_REBALANCE_TIME_PERIOD_NS,
+ 		.tv_sec = 0
+	};
+ 	period_ktime = timespec_to_ktime(period);
 
-// #ifdef WRR_LOAD_BALANCE
-// 	wrr_rq_load_balance();
-// #endif
-// 	hrtimer_forward(timer, timer->base->get_time(), period_ktime);
-// 	return HRTIMER_RESTART;
-// }
-// #ifdef CONFIG_SMP
-// static void grr_rq_load_balance(void)
-// {
-// 	int cpu;
-// 	int dest_cpu; /* id of cpu to move to */
-// 	struct rq *rq;
-// 	struct grr_rq *lowest_grr_rq, *highest_grr_rq, *curr_grr_rq;
-// 	struct sched_grr_entity *heaviest_task_on_highest_grr_rq;
-// 	struct sched_grr_entity *curr_entity;
-// 	struct list_head *curr;
-// 	struct list_head *head;
-// 	struct task_struct *task_to_move;
-// 	struct rq *rq_of_task_to_move;
-// 	struct rq *rq_of_lowest_qrr; /*rq of thing with smallest weight */
+#ifdef WRR_LOAD_BALANCE
+ 	wrr_rq_load_balance();
+#endif
+ 	hrtimer_forward(timer, timer->base->get_time(), period_ktime);
+ 	return HRTIMER_RESTART;
+}
+#ifdef CONFIG_SMP
+static void grr_rq_load_balance(void)
+{
+ 	int cpu;
+ 	int dest_cpu; /* id of cpu to move to */
+ 	struct rq *rq;
+ 	struct grr_rq *lowest_grr_rq, *highest_grr_rq, *curr_grr_rq;
+ 	struct sched_grr_entity *heaviest_task_on_highest_grr_rq;
+ 	struct sched_grr_entity *curr_entity;
+ 	struct list_head *curr;
+ 	struct list_head *head;
+ 	struct task_struct *task_to_move;
+ 	struct rq *rq_of_task_to_move;
+ 	struct rq *rq_of_lowest_qrr; /*rq of thing with smallest weight */
 
-// 	int counter = 1;
-// 	int lowest_size = INT_MAX;
-// 	int highest_size = INT_MIN;
+ 	int counter = 1;
+ 	int lowest_size = INT_MAX;
+ 	int highest_size = INT_MIN;
 
-// 	int largest_size = INT_MIN; /* used for load imblance issues*/
+ 	int largest_size = INT_MIN; /* used for load imblance issues*/
 
-// 	curr_entity = NULL;
+ 	curr_entity = NULL;
 
-// 	for_each_online_cpu(cpu) {
-// 		rq = cpu_rq(cpu);
-// 		if (rq == NULL)
-// 			continue;
+ 	for_each_online_cpu(cpu) {
+ 		rq = cpu_rq(cpu);
+ 		if (rq == NULL)
+ 			continue;
 
-// 		curr_grr_rq = &rq->grr;
-// 		if (curr_grr_rq->size > highest_size) {
-// 			highest_grr_rq = curr_grr_rq;
-// 			highest_size = curr_grr_rq->size;
-// 		}
-// 		if (curr_grr_rq->size < lowest_size) {
-// 			lowest_grr_rq = curr_grr_rq;
-// 			lowest_size = curr_grr_rq->size;
-// 		}
-// 		/* confirm if you don't have to do anything extra */
-// 		++counter;
-// 	}
+ 		curr_grr_rq = &rq->grr;
+ 		if (curr_grr_rq->size > highest_size) {
+ 			highest_grr_rq = curr_grr_rq;
+ 			highest_size = curr_grr_rq->size;
+ 		}
+ 		if (curr_grr_rq->size < lowest_size) {
+ 			lowest_grr_rq = curr_grr_rq;
+ 			lowest_size = curr_grr_rq->size;
+ 		}
+ 		/* confirm if you don't have to do anything extra */
+ 		++counter;
+ 	}
 
-// 	if (lowest_grr_rq == highest_grr_rq)
-// 		return;
-// 	/* See if we can do move  */
-// 	/* Need to make sure that we don't cause a load imbalance */
-// 	head = &highest_grr_rq->run_queue.run_list;
-// 	spin_lock(&highest_grr_rq->grr_rq_lock);
-// 	for (curr = head->next; curr != head; curr = curr->next) {
-// 		curr_entity = list_entry(curr,
-// 					struct sched_grr_entity,
-// 					run_list);
+ 	if (lowest_grr_rq == highest_grr_rq)
+ 		return;
+ 	/* See if we can do move  */
+ 	/* Need to make sure that we don't cause a load imbalance */
+ 	head = &highest_grr_rq->run_queue.run_list;
+ 	spin_lock(&highest_grr_rq->grr_rq_lock);
+ 	for (curr = head->next; curr != head; curr = curr->next) {
+ 		curr_entity = list_entry(curr,
+ 					struct sched_grr_entity,
+ 					run_list);
 
-// 		if (curr_entity->size > largest_size) {
-// 			heaviest_task_on_highest_wrr_rq = curr_entity;
-// 			largest_weight = curr_entity->weight;
-// 		}
-// 	}
-// 	spin_unlock(&highest_wrr_rq->wrr_rq_lock);
+ 		if (curr_entity->size > largest_size) {
+			heaviest_task_on_highest_wrr_rq = curr_entity;
+ 			largest_weight = curr_entity->weight;
+ 		}
+ 	}
+ 	spin_unlock(&highest_wrr_rq->wrr_rq_lock);
 
-// 	if (heaviest_task_on_highest_wrr_rq->weight +
-// 			lowest_wrr_rq->total_weight >=
-// 				highest_wrr_rq->total_weight)
-// 		/* there is an imbalance issues here */ {
-// 		return;
-// 	}
-// 	/* Okay, let's move the task */
-// 	rq_of_lowest_wrr = container_of(lowest_wrr_rq, struct rq, wrr);
-// 	dest_cpu = rq_of_lowest_wrr->cpu;
-// 	task_to_move = container_of(heaviest_task_on_highest_wrr_rq,
-// 				    struct task_struct, wrr);
+ 	if (heaviest_task_on_highest_wrr_rq->weight +
+ 			lowest_wrr_rq->total_weight >=
+ 				highest_wrr_rq->total_weight)
+ 		/* there is an imbalance issues here */ {
+ 		return;
+ 	}
+ 	/* Okay, let's move the task */
+ 	rq_of_lowest_wrr = container_of(lowest_wrr_rq, struct rq, wrr);
+ 	dest_cpu = rq_of_lowest_wrr->cpu;
+ 	task_to_move = container_of(heaviest_task_on_highest_wrr_rq,
+ 				    struct task_struct, wrr);
 
-// 	rq_of_task_to_move = task_rq(task_to_move);
-// 	deactivate_task(rq_of_task_to_move, task_to_move, 0);
+ 	rq_of_task_to_move = task_rq(task_to_move);
+ 	deactivate_task(rq_of_task_to_move, task_to_move, 0);
 
-// 	set_task_cpu(task_to_move, dest_cpu);
-// 	activate_task(rq_of_lowest_wrr , task_to_move, 0);
-// }
-// #endif
+ 	set_task_cpu(task_to_move, dest_cpu);
+ 	activate_task(rq_of_lowest_wrr , task_to_move, 0);
+}
+#endif
 
 
 /*Wendan Kang*/
@@ -250,7 +250,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 /*The parameter(s) may have two options considering fair.c and rt.c:
 *1. struct rq *rq, struct grr_rq *grr_rq
 *2. struct grr_rq *grr_rq
-* Called by init_sched
+* Called by _schedinit
 */
 void init_grr_rq(struct grr_rq *grr_rq)
 {
@@ -266,7 +266,7 @@ void init_grr_rq(struct grr_rq *grr_rq)
 	INIT_LIST_HEAD(&grr_se->run_list);
 
 	grr_se->task = NULL;
-	grr_se->time_slice = 100;
+	grr_se->time_slice = 0;
 	grr_se->time_left = 0;
 }
 
@@ -280,10 +280,16 @@ static void init_task_grr(struct task_struct *p)
 
 	grr_se = &p->grr;
 	grr_se->task = p;
-	/*grr_entity time slice is set in init_grr_rq*/
+	/*init time_slice, also as time left*/
+	grr_se->time_slice = GRR_TIMESLICE;
 
 	/* Initialize the list head just to be safe */
 	INIT_LIST_HEAD(&grr_se->run_list);
+}
+
+void init_sched_grr_class(void)
+{
+	/*don't know whether we need to implement that*/
 }
 
 /*Wendan Kang*/
@@ -415,13 +421,13 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	 * RR tasks need a special form of timeslice management.
 	 * FIFO tasks have no timeslices.
 	 */
-	if (p->policy != SCHED_RR)
+	if (p->policy != SCHED_GRR)
 		return;
 
 	if (--p->grr.time_slice)
 		return;
 
-	p->grr.time_slice = RR_TIMESLICE;
+	p->grr.time_slice = GRR_TIMESLICE;
 
 	/*
 	 * Requeue to the end of queue if we (and all of our ancestors) are the
@@ -434,6 +440,36 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 			return;
 		}
 	}
+}
+/*
+ * Priority of the task has changed. This may cause
+ * us to initiate a push or pull.
+ */
+static void
+prio_changed_rt(struct rq *rq, struct task_struct *p, int oldprio)
+{
+	/* There is only GRR (Round Robin) policy in grr schedule class,
+	 * no need to implement this fuction.
+	 */
+}
+/* Wendan Kang
+ * This function is called when a running process has changed its scheduler
+ * and chosen to make this scheduler (GRR), its scheduler.
+ * The ONLY THING WE NEED TO WORRRRRRRRRRRY ABOUT IS
+ * load balance, whether make a task to switch to grr runqueue will cause
+ * overload but as we implement load balance it's kind of like we don't need
+ * do extra thing here.
+ * UNLESS SOME CORNER CASEs REALLY HAPPEN T_T
+ *
+ * enqueue is called before switched_to_grr so we just set some default
+ * value as init_task_grr did.
+ * */
+static void switched_to_grr(struct rq *rq, struct task_struct *p)
+{
+	if (!p->se.on_rq)
+		return;
+
+	init_task_grr(p);
 }
 /***************************************************************
 * SMP Function below
@@ -562,21 +598,11 @@ static void switched_from_grr(struct rq *rq, struct task_struct *p)
 #endif
 /***************************************************************/
 
-static void switched_to_grr(struct rq *rq, struct task_struct *p)
-{
-	BUG();
-}
+/***************************************************************
+ * extra
+ */
 
-static void
-prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio)
-{
-	BUG();
-}
 
-static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task)
-{
-	return 0;
-}
 
 /*
  * Simple, special scheduling class for the per-CPU grr tasks:
@@ -602,10 +628,10 @@ const struct sched_class grr_sched_class = {
 #endif
 
 	.set_curr_task          = set_curr_task_grr, /*done*/
-	.task_tick		= task_tick_grr,             /*not done yet*/
+	.task_tick		= task_tick_grr,             /*done*/
 
-	.get_rr_interval	= get_rr_interval_grr,
+	.get_rr_interval	= get_rr_interval_grr,   /*not sure what it does, haven't implement*/
 
-	.prio_changed		= prio_changed_grr,
-	.switched_to		= switched_to_grr,
+	.prio_changed		= prio_changed_grr,      /*dummy function*/
+	.switched_to		= switched_to_grr,       /*dummy function*/
 };

@@ -1258,15 +1258,11 @@ struct sched_grr_entity {
 	struct task_struct *task;
 	
 	/* the current time slice for this task
-	 * time_slice = weight * SCHED_WRR_TIME_QUANTUM.
-	 * given in milliseconds.
+	 * when it runs our its time, give it the GRR_TIMESLICE,
+	 * define in this file, too.
 	 */
 	unsigned int time_slice;
-	/* the amount of time left for this task
-	 * on the currently assigned time slice.
-	 * This should actually be in *10s of milliseconds*,
-	 * so divide time_slice value by 10. */
-	unsigned long time_left;
+	
 	struct sched_grr_entity	*parent;
 	/* rq on which this entity is (to be) queued: */
 	struct grr_rq		*grr_rq;
@@ -1279,6 +1275,11 @@ struct sched_grr_entity {
  * Timeslices get refilled after they expire.
  */
 #define RR_TIMESLICE		(100 * HZ / 1000)
+
+/*
+ * default timeslice is 100 ms, only for GRR policy
+ */
+#define GRR_TIMESLICE		100 /*???need to be sure, it is required to be 100 ms*/
 
 struct rcu_node;
 
