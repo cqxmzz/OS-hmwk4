@@ -195,7 +195,7 @@ static void update_curr_grr(struct rq *rq)
 	account_group_exec_runtime(curr, delta_exec);
 
 	curr->se.exec_start = rq->clock_task;
-	cpuacct_charge(c`urr, delta_exec);
+	cpuacct_charge(curr, delta_exec);
 }
 /*
  * Put task to the head or the end of the run list without the overhead of
@@ -392,13 +392,13 @@ static void task_fork_grr(struct task_struct *p)
 	struct sched_grr_entity *grr_entity;
 	if (p == NULL)
 		return;
-	grr_entity = &p->wrr;
+	grr_entity = &p->grr;
 	grr_entity->task = p;
 
 	/* We keep the weight of the parent. We re-initialize
 	 * the other values that are derived from the parent's weight */
 
-	wrr_entity->time_slice = GRR_TIMESLICE;
+	grr_entity->time_slice = GRR_TIMESLICE;
 	
 }
 
@@ -432,7 +432,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 
 	/* add it to the queue.*/
 	head = &grr_se->run_list;
-	list_add_tail(&new_se>run_list, head);
+	list_add_tail(&new_se->run_list, head);
 
 	/* update statistics counts */
 	++grr_rq->grr_nr_running;
@@ -492,9 +492,6 @@ static struct sched_grr_entity *pick_next_grr_entity(struct rq *rq,
 static struct task_struct *pick_next_task_grr(struct rq *rq)
 {
 	struct task_struct *p;
-	struct sched_grr_entity *head_entity;
-	struct sched_grr_entity *next_entity;
-	struct list_head *head;
 	struct grr_rq *grr_rq = &rq->grr;
 	struct sched_grr_entity *grr_se;
 
@@ -560,7 +557,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	printk("%s", p->comm);
 
 	update_curr_grr(rq);
-	watchdog(rq, p);
+	//watchdog(rq, p);
 	if (p->policy != SCHED_GRR)
 		return;
 	if (--p->grr.time_slice)
@@ -597,7 +594,7 @@ static void switched_to_grr(struct rq *rq, struct task_struct *p)
 {
 	printk("[cqm]switched_to_grr\n");
 	printk("%s", p->comm);
-	struct sched_wrr_entity *wrr_entity = &p->wrr;
+	struct sched_grr_entity *grr_entity = &p->grr;
 	grr_entity->task = p;
 
 	grr_entity->time_slice = GRR_TIMESLICE;
@@ -612,77 +609,23 @@ static DEFINE_PER_CPU(cpumask_var_t, local_cpu_mask);
 /* helper function: help to find cpu to assign task*/
 static int find_lowest_rq(struct task_struct *task)
 {
-	struct sched_domain *sd;
-	struct cpumask *lowest_mask = __get_cpu_var(local_cpu_mask);
-	int this_cpu = smp_processor_id();
-	int cpu      = task_cpu(task);
+	struct rq *rq;
+	struct grr_rq *grr_rq;
+	int cpu, best_cpu, nr;
+	int lowest_nr = INT_MAX;
 
-	printk("[cqm]find_lowest_rq\n");
-	/* Make sure the mask is initialized first */
-	if (unlikely(!lowest_mask))
-		return -1;
+	best_cpu = -1; /* assume no best cpu */
+	for_each_online_cpu(cpu) {
+		rq = cpu_rq(cpu);
+		nr = rq->nr_running;
 
-	if (task->rt.nr_cpus_allowed == 1)
-		return -1; /* No other targets possible */
-
-	if (!cpupri_find(&task_rq(task)->rd->cpupri, task, lowest_mask))
-		return -1; /* No targets found */
-
-	/*
-	 * At this point we have built a mask of cpus representing the
-	 * lowest priority tasks in the system.  Now we want to elect
-	 * the best one based on our affinity and topology.
-	 *
-	 * We prioritize the last cpu that the task executed on since
-	 * it is most likely cache-hot in that location.
-	 */
-	if (cpumask_test_cpu(cpu, lowest_mask))
-		return cpu;
-
-	/*
-	 * Otherwise, we consult the sched_domains span maps to figure
-	 * out which cpu is logically closest to our hot cache data.
-	 */
-	if (!cpumask_test_cpu(this_cpu, lowest_mask))
-		this_cpu = -1; /* Skip this_cpu opt if not among lowest */
-
-	rcu_read_lock();
-	for_each_domain(cpu, sd) {
-		if (sd->flags & SD_WAKE_AFFINE) {
-			int best_cpu;
-
-			/*
-			 * "this_cpu" is cheaper to preempt than a
-			 * remote processor.
-			 */
-			if (this_cpu != -1 &&
-			    cpumask_test_cpu(this_cpu, sched_domain_span(sd))) {
-				rcu_read_unlock();
-				return this_cpu;
-			}
-
-			best_cpu = cpumask_first_and(lowest_mask,
-						     sched_domain_span(sd));
-			if (best_cpu < nr_cpu_ids) {
-				rcu_read_unlock();
-				return best_cpu;
-			}
+		if (nr < lowest_nr) {
+			lowest_nr = nr;
+			best_cpu = cpu;
 		}
 	}
-	rcu_read_unlock();
 
-	/*
-	 * And finally, if there were no matches within the domains
-	 * just give the caller *something* to work with from the compatible
-	 * locations.
-	 */
-	if (this_cpu != -1)
-		return this_cpu;
-
-	cpu = cpumask_any(lowest_mask);
-	if (cpu < nr_cpu_ids)
-		return cpu;
-	return -1;
+	return best_cpu;
 }
 
 static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
@@ -693,9 +636,6 @@ static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 	printk("[cqm]select_task_rq_grr\n");
 	printk("%s", p->comm);
 	cpu = task_cpu(p);
-
-	if (p->grr.nr_cpus_allowed == 1)
-		goto out;
 
 	/* For anything but wake ups, just return the task_cpu */
 	if (sd_flag != SD_BALANCE_WAKE && sd_flag != SD_BALANCE_FORK)

@@ -3268,9 +3268,9 @@ need_resched:
 		rq->curr = next;
 		++*switch_count;
 		
-		printk(" context_switch");
-		printk(" %s", prev->comm);
-		printk(" %s", next->comm);
+		//printk(" context_switch");
+		//printk(" %s", prev->comm);
+		//printk(" %s", next->comm);
 		context_switch(rq, prev, next); /* unlocks the rq */
 		/*
 		 * The context switch have flipped the stack from under us
