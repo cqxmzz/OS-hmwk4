@@ -125,6 +125,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 		sched_move_task(p);
 	} while_each_thread(g, p);
 	write_unlock_irqrestore(&tasklist_lock, flags);
+	return 0;
 } 
 
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)

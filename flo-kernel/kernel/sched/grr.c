@@ -397,7 +397,7 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	dec_nr_running(rq);
 #ifdef CONFIG_SMP
 
-	if (rq->grr->size == 0)
+	if (rq->grr.size == 0)
 		grr_rq_load_balance(get_group(p));
 
 #endif
