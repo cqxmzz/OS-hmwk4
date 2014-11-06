@@ -175,7 +175,7 @@ void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
 	SEQ_printf(m, "  .%-30s: %Ld\n", "grr_nr_running", grr_rq->grr_nr_running);
 	SEQ_printf(m, "  .%-30s: %Ld\n", "size", grr_rq->size);
 
-#ifdef CONFIG_FAIR_GROUP_SCHED
+#ifdef CONFIG_GRR_GROUP_SCHED
 #ifdef CONFIG_SMP
 	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "load_avg",
 			SPLIT_NS(grr_rq->load_avg));

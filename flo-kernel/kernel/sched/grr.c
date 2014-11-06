@@ -239,10 +239,10 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 /***************************************************************
 * load balance implementation
 */
+#ifdef CONFIG_SMP
 
 static void grr_rq_load_balance(void)
 {
-	#ifdef CONFIG_SMP
 	int cpu;
  	int dest_cpu; /* id of cpu to move to */
  	struct rq *rq;
@@ -301,7 +301,6 @@ static void grr_rq_load_balance(void)
  	}
  	double_rq_unlock(highest_rq, lowest_rq);
  	rcu_read_unlock();
-	#endif
 }
 
 enum hrtimer_restart print_current_time(struct hrtimer *timer)
@@ -319,6 +318,8 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer)
         hrtimer_forward(timer, timer->base->get_time(), period_ktime);
         return HRTIMER_RESTART;
 }
+
+#endif
 
 /*Wendan Kang*/
 /*The parameter(s) may have two options considering fair.c and rt.c:

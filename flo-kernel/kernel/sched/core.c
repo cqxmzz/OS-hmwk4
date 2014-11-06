@@ -88,9 +88,13 @@
 #include <trace/events/sched.h>
 
 /*define timer for load balance*/
-static struct hrtimer grr_balance_timer;
+#ifdef CONFIG_SMP
 
+static struct hrtimer grr_balance_timer;
 enum hrtimer_restart print_current_time(struct hrtimer *timer);
+
+#endif
+
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
@@ -6923,8 +6927,12 @@ void __init sched_init_smp(void)
 	init_hrtick();
 
 	/* start my own grr rebalance timer */
+	#ifdef CONFIG_SMP
+	
 	period_ktime = timespec_to_ktime(period);
 	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
+	
+	#endif
 
 	/* Move init over to a non-isolated CPU */
 	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
@@ -7333,7 +7341,7 @@ static void free_sched_group(struct task_group *tg)
 	free_fair_sched_group(tg);
 	free_rt_sched_group(tg);
 	/* Wendan Kang*/
-	//free_grr_sched_group(tg);
+	free_grr_sched_group(tg);
 	autogroup_free(tg);
 	kfree(tg);
 }
@@ -7355,8 +7363,8 @@ struct task_group *sched_create_group(struct task_group *parent)
 		goto err;
 
 	/* Wendan Kang*/
-	//if (!alloc_grr_sched_group(tg, parent))
-	//	goto err;
+	if (!alloc_grr_sched_group(tg, parent))
+		goto err;
 
 	spin_lock_irqsave(&task_group_lock, flags);
 	list_add_rcu(&tg->list, &task_groups);
