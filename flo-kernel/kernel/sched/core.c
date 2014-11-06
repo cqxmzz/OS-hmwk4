@@ -101,8 +101,31 @@ ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 /* Qiming Chen */
 SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 {
-	return 1;
-}
+	int i;
+	int count;
+	struct task_struct *g, *p;
+
+	if (cpu_group[numCPU] == group)
+		return 0;
+	count = 0;
+	for(i = 0; i < NR_CPUS; ++i)
+	{
+		if (cpu_group[i] != group)
+			count++;
+	}
+	if (count <= 1)
+		return -1;
+	cpu_group[numCPU] = group;
+
+	write_lock_irqsave(&tasklist_lock, flags);
+	do_each_thread(g, p) {
+		if (!p->on_rq || task_cpu(p) != numCPU)
+			continue;
+
+		sched_move_task(p);
+	} while_each_thread(g, p);
+	write_unlock_irqrestore(&tasklist_lock, flags);
+} 
 
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
 {
@@ -7425,7 +7448,7 @@ void sched_move_task(struct task_struct *tsk)
 	if (tsk->policy != SCHED_GRR)
 		set_task_rq(tsk, task_cpu(tsk));
 	else
-		set_task_rq(tsk, cpu_rq(find_lowest_rq(tsk)));
+		set_task_rq(tsk, select_task_rq_grr(tsk, 0, 0));
 	if (unlikely(running))
 		tsk->sched_class->set_curr_task(rq);
 	if (on_rq)
