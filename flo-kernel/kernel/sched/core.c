@@ -97,7 +97,7 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer);
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
 /* Caiyuannan */
-
+/* 感觉做错了 cpu_cgroup_attach ＊/
 static void migrate_all_tasks(int src_cpu, int dest_cpu);
 
 /* Qiming Chen */
@@ -190,16 +190,36 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	}
 
 	if (dir == BACK2FORE) {
+		/* 先把diff数目的background的清空，
+		再把foreground的移动一些到刚才被清空的 */
+
 		for (int i = 0; i < diff; i++) {
 			srcCpu = cpusForBackground[i];
-			destCpu = cpusForForeground[0];
+			destCpu =
+			cpusForBackground[numberOfCpusForBackground-1];
 			migrate_all_tasks(srcCpu, destCpu);
+
+			destCPu = srcCpu;
+			srcCpu = cpusForForeground[0];
+			rq = cpu_rq(srcCpu);
+			if (rq != NULL) {
+				__migrate_task(rq->idle, srcCpu, destCpu);
+			}
 		}
+
 	} else {
 		for (int i = 0; i < diff; i++) {
 			srcCpu = cpusForForeground[i];
-			destCpu = cpusForBackground[0];
+			destCpu =
+			cpusForForeground[numberOfCpusForForeground-1];
 			migrate_all_tasks(srcCpu, destCpu);
+
+			destCPu = srcCpu;
+			srcCpu = cpusForBackground[0];
+			rq = cpu_rq(srcCpu);
+			if (rq != NULL) {
+				__migrate_task(rq->idle, srcCpu, destCpu);
+			}
 		}
 	}
 	free(rq);
