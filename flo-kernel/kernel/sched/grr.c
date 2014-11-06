@@ -221,6 +221,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 	struct grr_rq *grr_rq;
 
 	printk("[cqm]requeue_task_grr\n");
+	printk("%s", p->comm);
 	for_each_sched_grr_entity(grr_se) {
 		grr_rq = grr_rq_of_se(grr_se);
 		requeue_grr_entity(grr_rq, grr_se, head);
@@ -367,7 +368,8 @@ static void init_task_grr(struct task_struct *p)
 	if (p == NULL)
 		return;
 	printk("[cqm]init_task_grr\n");
-	
+	printk("%s", p->comm);
+
 	grr_se = &p->grr;
 	grr_se->task = p;
 	/*init time_slice, also as time left*/
@@ -382,12 +384,14 @@ static void init_task_grr(struct task_struct *p)
 static void task_fork_grr(struct task_struct *p)
 {
 	printk("[cqm]task_fork_grr\n");
+	printk("%s", p->comm);
 	init_task_grr(p);
 }
 
 void init_sched_grr_class(void)
 {
 	printk("[cqm]init_sched_grr_class\n");
+	printk("%s", p->comm);
 	/*don't know whether we need to implement that*/
 }
 
@@ -401,6 +405,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_grr_entity *grr_se;
 	struct grr_rq *grr_rq = &rq->grr;
 	printk("[cqm]enqueue_task\n");
+	printk("%s", p->comm);
 	grr_se = &grr_rq->run_queue;
 
 	init_task_grr(p); /* initializes the grr_entity in task_struct */
@@ -429,6 +434,7 @@ static void
 dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 {
 	printk("[cqm]dequeue_task_grr\n");
+	printk("%s", p->comm);
 	struct sched_grr_entity *grr_se = &p->grr;
 	struct grr_rq *grr_rq = grr_rq_of_se(grr_se);
 
@@ -477,7 +483,7 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 	struct sched_grr_entity *grr_se;
 
 	//printk("[cqm]pick_next_task_grr\n");
-	if (!grr_rq->grr_nr_running)
+	 (!grr_rq->grr_nr_running)
 		return NULL;
 
 	do {
@@ -513,6 +519,7 @@ static void watchdog(struct rq *rq, struct task_struct *p)
 {
 	unsigned long soft, hard;
 	printk("[cqm]watchdog\n");
+	printk("%s", p->comm);
 	/* max may change after cur was read, this will be fixed next tick */
 	soft = task_rlimit(p, RLIMIT_RTTIME);
 	hard = task_rlimit_max(p, RLIMIT_RTTIME);
@@ -531,6 +538,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 {
 	struct sched_grr_entity *grr_se = &p->grr;
 	printk("[cqm]task_tick_grr\n");
+	printk("%s", p->comm);
 
 	update_curr_grr(rq);
 	watchdog(rq, p);
@@ -569,6 +577,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 static void switched_to_grr(struct rq *rq, struct task_struct *p)
 {
 	printk("[cqm]switched_to_grr\n");
+	printk("%s", p->comm);
 	//init_task_grr(p);
 }
 /***************************************************************
@@ -659,6 +668,7 @@ static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 	int target;
 
 	printk("[cqm]select_task_rq_grr\n");
+	printk("%s", p->comm);
 	cpu = task_cpu(p);
 
 	if (p->grr.nr_cpus_allowed == 1)
@@ -681,11 +691,13 @@ out:
 
 static void task_woken_grr(struct rq *rq, struct task_struct *p) {
 	printk("[cqm]task_woken_grr\n");
+	printk("%s", p->comm);
 	init_task_grr(p);
 }
 
 static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
 	printk("[cqm]get_rr_interval_grr\n");
+	printk("%s", task->comm);
 	if (task == NULL)
 		return -EINVAL;
 	return GRR_TIMESLICE;
