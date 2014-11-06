@@ -7152,7 +7152,7 @@ void __init sched_init(void)
 	 */
 	 /*Wendan Kang: do we need to change that?*/
 	//current->sched_class = &grr_sched_class;
-	 current->sched_class = &fair_sched_class;
+	current->sched_class = &fair_sched_class;
 
 #ifdef CONFIG_SMP
 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
@@ -7335,7 +7335,7 @@ static void free_sched_group(struct task_group *tg)
 	free_fair_sched_group(tg);
 	free_rt_sched_group(tg);
 	/* Wendan Kang*/
-	free_grr_sched_group(tg);
+	//free_grr_sched_group(tg);
 	autogroup_free(tg);
 	kfree(tg);
 }
@@ -7357,8 +7357,8 @@ struct task_group *sched_create_group(struct task_group *parent)
 		goto err;
 
 	/* Wendan Kang*/
-	if (!alloc_grr_sched_group(tg, parent))
-		goto err;
+	//if (!alloc_grr_sched_group(tg, parent))
+	//	goto err;
 
 	spin_lock_irqsave(&task_group_lock, flags);
 	list_add_rcu(&tg->list, &task_groups);
