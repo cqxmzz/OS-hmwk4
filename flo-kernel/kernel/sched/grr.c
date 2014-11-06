@@ -238,9 +238,9 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 * load balance implementation
 */
 
-#ifdef CONFIG_SMP
 static void grr_rq_load_balance(void)
 {
+	#ifdef CONFIG_SMP
 	int cpu;
  	int dest_cpu; /* id of cpu to move to */
  	struct rq *rq;
@@ -281,7 +281,7 @@ static void grr_rq_load_balance(void)
 
  	/* See if we can do move  */
  	rcu_read_lock();
- 	double_lock_balance(highest_rq, lowest_rq);
+ 	double_rq_lock(highest_rq, lowest_rq);
 
  	/* See if we can do move  */
  	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
@@ -297,10 +297,10 @@ static void grr_rq_load_balance(void)
  			activate_task(rq_of_lowest_grr , task_to_move, 0);
  		}
  	}
- 	double_unlock_balance(highest_rq, lowest_rq);
+ 	double_rq_unlock(highest_rq, lowest_rq);
  	rcu_read_unlock();
+	#endif
 }
-#endif
 
 enum hrtimer_restart print_current_time(struct hrtimer *timer)
 {
@@ -532,12 +532,12 @@ static void set_curr_task_grr(struct rq *rq)
 	rq->grr.curr = &p->grr;
 }
 
+/*
 static void watchdog(struct rq *rq, struct task_struct *p)
 {
 	unsigned long soft, hard;
 	//printk("[cqm]watchdog\n");
 	//printk("%s", p->comm);
-	/* max may change after cur was read, this will be fixed next tick */
 	soft = task_rlimit(p, RLIMIT_RTTIME);
 	hard = task_rlimit_max(p, RLIMIT_RTTIME);
 
@@ -550,6 +550,7 @@ static void watchdog(struct rq *rq, struct task_struct *p)
 			p->cputime_expires.sched_exp = p->se.sum_exec_runtime;
 	}
 }
+*/
 
 static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 {
@@ -609,6 +610,7 @@ static void switched_to_grr(struct rq *rq, struct task_struct *p)
 #ifdef CONFIG_SMP
 
 static DEFINE_PER_CPU(cpumask_var_t, local_cpu_mask);
+
 /* helper function: help to find cpu to assign task*/
 static int find_lowest_rq(struct task_struct *task)
 {
@@ -661,22 +663,12 @@ static void task_woken_grr(struct rq *rq, struct task_struct *p) {
 	//init_task_grr(p);
 }
 
-static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
-	//printk("[cqm]get_rr_interval_grr\n");
-	//printk("%s", task->comm);
-	if (task == NULL)
-		return -EINVAL;
-	return GRR_TIMESLICE;
-}
-
 static void set_cpus_allowed_grr(struct task_struct *p, const struct cpumask *new_mask) {
 	/* Need implement Qiming Chen*/
 }
 
 
 /* leave then empty is OK */
-static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags) {
-}
 
 static void rq_online_grr(struct rq *rq) {
 }
@@ -690,13 +682,24 @@ static void pre_schedule_grr(struct rq *rq, struct task_struct *prev) {
 static void post_schedule_grr(struct rq *rq) {
 }
 
+#endif
+
+static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
+        //printk("[cqm]get_rr_interval_grr\n");
+        //printk("%s", task->comm);
+        if (task == NULL)
+                return -EINVAL;
+        return GRR_TIMESLICE;
+}
+
+static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags) {
+}
+
 static void switched_from_grr(struct rq *rq, struct task_struct *p) {
 }
 
 static void prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio) {
 }
-
-#endif
 
 /*
  * Simple, special scheduling class for the per-CPU grr tasks:
@@ -720,8 +723,8 @@ const struct sched_class grr_sched_class = {
 	.pre_schedule		= pre_schedule_grr,      /*dummy function*/
 	.post_schedule		= post_schedule_grr,     /*dummy function*/
 	.task_woken		= task_woken_grr,            /*dummy function*/
-	.switched_from		= switched_from_grr,     /*dummy function*/
 #endif
+	.switched_from		= switched_from_grr,     /*dummy function*/
 
 	.set_curr_task          = set_curr_task_grr, /*done*/
 	.task_tick		= task_tick_grr,             /*done*/
