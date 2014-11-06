@@ -420,6 +420,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	++grr_rq->grr_nr_running;
 	++grr_rq->size;
 	spin_unlock(&grr_rq->grr_rq_lock);
+	inc_nr_running(rq);
 }
 
 
@@ -446,6 +447,7 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	--grr_rq->grr_nr_running;
 	--grr_rq->size;
 	spin_unlock(&grr_rq->grr_rq_lock);
+	dec_nr_running(rq);
 }
 
 static void yield_task_grr(struct rq *rq)
@@ -501,7 +503,7 @@ static void put_prev_task_grr(struct rq *rq, struct task_struct *prev)
 }
 static void set_curr_task_grr(struct rq *rq)
 {
-	printk("[cqm]put_prev_task_grr\n");
+	printk("[cqm]set_curr_task_grr\n");
 	struct task_struct *p = rq->curr;
 	p->se.exec_start = rq->clock_task;
 	rq->grr.curr = &p->grr;
