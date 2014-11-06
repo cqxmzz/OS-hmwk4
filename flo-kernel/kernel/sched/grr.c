@@ -272,7 +272,9 @@ static void grr_rq_load_balance(void)
  			lowest_rq = rq;
  		}
  	}
- 	
+ 	if (lowest_grr_rq == NULL || highest_grr_rq == NULL)
+ 		return;
+
  	/* See if we can do move  */
  	if (lowest_grr_rq == highest_grr_rq || highest_size - lowest_size < 2)
  		return;
@@ -295,9 +297,8 @@ static void grr_rq_load_balance(void)
  			activate_task(rq_of_lowest_grr , task_to_move, 0);
  		}
  	}
-
-	rcu_read_unlock();
  	double_unlock_balance(highest_rq, lowest_rq);
+ 	rcu_read_unlock();
 }
 #endif
 
