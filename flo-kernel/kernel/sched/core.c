@@ -87,6 +87,9 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
+#define FOREGROUND 1
+#define BACKGROUND 2
+
 /*define timer for load balance*/
 static struct hrtimer grr_balance_timer;
 
@@ -97,18 +100,47 @@ ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 /* Qiming Chen */
 SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 {
-	int numberOfCoresAvailable;
+	int numberOfCores ＝ 4;
+	int cpu;
+	struct rq *rq = NULL;
+	struct task_struct *curr = NULL;
+	int *cpusForForground = NULL, *cpusForBackground = NULL;
+	int numberOfCpusForForground = 0, numberOfCpusForBackground = 0;
 	/* number of cores online */
 	numberOfCores = sysconf(_SC_NPROCESSORS_ONLN);
-	if (numberOfCoresAvailable < 0) {
+	if (numberOfCores < 0) {
 		/* -1 cannot get number of cores */
 		return -1;
 	}
-	if (numCPU <= 0 || numCPU >= numberOfCoresAvailable) {
+	if (numCPU <= 0 || numCPU >= numberOfCores) {
 		/* -2 indicates numCPU is invalid */
 		return -2;
 	}
-	
+	cpusForForground = (int *) malloc(numberOfCores, sizeof(int));
+	cpusForBackground = (int *) calloc(numberOfCores, sizeof(int));
+ 	for_each_online_cpu(cpu) {
+		char *groupPath = NULL;
+ 		rq = cpu_rq(cpu);
+		if (rq == NULL)
+			continue;
+		curr = rq->curr;
+		groupPath = task_group_path(task_group(p));
+		/* The return value will be
+		"/" for a system group,
+		"/apps" for a foreground group,
+		"/apps/bg_non_interactive" for a background group.
+		*/
+
+		/* "/app" */
+		if (groupPath[1] == '\0') {
+			cpusForBackground[numberOfCpusForBackground++] = cpu;
+		} else if (groupPath[5] == '\0') {
+			cpusForForground[numberOfCpusForForground++] = cpu;
+		} else if (groupPath[24] == '\0') {
+			cpusForBackground[numberOfCpusForBackground++] = cpu;
+		}
+	}
+
 	return 1;
 }
 
