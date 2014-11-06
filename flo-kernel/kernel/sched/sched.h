@@ -125,13 +125,6 @@ struct task_group {
 
 	struct rt_bandwidth rt_bandwidth;
 #endif
-
-/*Wendan Kang*/
-#ifdef CONFIG_GRR_GROUP_SCHED
-	struct sched_grr_entity **grr_se;
-	struct grr_rq **grr_rq;
-#endif
-
 	struct rcu_head rcu;
 	struct list_head list;
 
@@ -341,45 +334,6 @@ struct grr_rq {
 	/* Currently running entity on this GRR run queue
 	 * It's NULL if nothing is running */
 	struct sched_grr_entity *curr;
-
-#ifdef CONFIG_GRR_GROUP_SCHED
-	struct rq *rq;	/* cpu runqueue to which this cfs_rq is attached */
-
-	/*
-	 * leaf grr_rqs are those that hold tasks (lowest schedulable entity in
-	 * a hierarchy). Non-leaf lrqs hold other higher schedulable entities
-	 * (like users, containers etc.)
-	 *
-	 * leaf_grr_rq_list ties together list of leaf cfs_rq's in a cpu. This
-	 * list is used during load balance.
-	 */
-	int on_list;
-	struct list_head leaf_grr_rq_list;
-	struct task_group *tg;	/* group that "owns" this runqueue */
-/* Wendan Kang: This part should still be considered in load_balance*/
-#ifdef CONFIG_SMP
-	/*
-	 *   h_load = weight * f(tg)
-	 *
-	 * Where f(tg) is the recursive weight fraction assigned to
-	 * this group.
-	 */
-	unsigned long h_load;
-
-	/*
-	 * Maintaining per-cpu shares distribution for group scheduling
-	 *
-	 * load_stamp is the last time we updated the load average
-	 * load_last is the last time we updated the load average and saw load
-	 * load_unacc_exec_time is currently unaccounted execution time
-	 */
-	u64 load_avg;
-	u64 load_period;
-	u64 load_stamp, load_last, load_unacc_exec_time;
-
-	unsigned long load_contribution;
-#endif /* CONFIG_SMP */
-#endif /* CONFIG_GRR_GROUP_SCHED */
 };
 
 #ifdef CONFIG_SMP
@@ -451,9 +405,6 @@ struct rq {
 #endif
 #ifdef CONFIG_RT_GROUP_SCHED
 	struct list_head leaf_rt_rq_list;
-#endif
-#ifdef CONFIG_GRR_GROUP_SCHED /*Wendan Kang*/
-	struct list_head leaf_grr_rq_list;
 #endif
 
 	/*

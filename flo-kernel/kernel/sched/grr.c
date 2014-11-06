@@ -14,115 +14,32 @@
 /**************************************************************
  * GRR operations on generic schedulable entities:
  */
-#ifdef CONFIG_GRR_GROUP_SCHED
 
 /*Qiming Chen*/
-#define for_each_sched_grr_entity(grr_se) \
-	for (; grr_se; grr_se = grr_se->parent)
 
-#define grr_entity_is_task(grr_se) (!(grr_se)->my_q)
-
-static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
+static char *task_group_path_grr(struct task_group *tg)
 {
-#ifdef CONFIG_SCHED_DEBUG
-	WARN_ON_ONCE(!grr_entity_is_task(grr_se));
-#endif
-	return grr_se->task;
-}
-
-/* runqueue on which this entity is (to be) queued */
-static inline struct grr_rq *grr_rq_of_se(struct sched_grr_entity *grr_se)
-{
-	return grr_se->grr_rq;
-}
-static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
-{
-	return grr_se->my_q;
-}
-
-/* Wendan Kang*/
-void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
-			struct sched_grr_entity *grr_se, int cpu,
-			struct sched_grr_entity *parent)
-{
-	struct rq *rq = cpu_rq(cpu);
-
-	grr_rq->tg = tg;
-	grr_rq->rq = rq;
-#ifdef CONFIG_SMP
-	/* allow initial update_cfs_load() to truncate */
-	grr_rq->load_stamp = 1;
-#endif
-	tg->grr_rq[cpu] = grr_rq;
-	tg->grr_se[cpu] = grr_se;
-
-	/* se could be NULL for root_task_group */
-	if (!grr_se)
-		return;
-
-	if (!parent)
-		grr_se->grr_rq = &rq->grr;
-	else
-		grr_se->grr_rq = parent->my_q;
-
-	grr_se->my_q = grr_rq;
-	grr_se->parent = parent;
-	INIT_LIST_HEAD(&grr_se->run_list);
-}
-/* Wendan Kang*/
-void free_grr_sched_group(struct task_group *tg)
-{
-	int i;
-	for_each_possible_cpu(i) {
-		if (tg->grr_rq)
-			kfree(tg->grr_rq[i]);
-		if (tg->se)
-			kfree(tg->grr_se[i]);
+	if (autogroup_path(tg, group_path, PATH_MAX))
+		return group_path;
+	/*
+	 * May be NULL if the underlying cgroup isn't fully-created yet
+	 */
+	if (!tg->css.cgroup) {
+		group_path[0] = '\0';
+		return group_path;
 	}
-
-	kfree(tg->grr_rq);
-	kfree(tg->grr_se);
+	cgroup_path(tg->css.cgroup, group_path, PATH_MAX);
+	return group_path;
 }
-/* Wendan Kang*/
-int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent)
+
+static int get_group(struct task_struct * p)
 {
-	struct grr_rq *grr_rq;
-	struct sched_grr_entity *grr_se;
-	int i;
-
-	tg->grr_rq = kzalloc(sizeof(grr_rq) * nr_cpu_ids, GFP_KERNEL);
-	if (!tg->grr_rq)
-		goto err;
-	tg->grr_se = kzalloc(sizeof(grr_se) * nr_cpu_ids, GFP_KERNEL);
-	if (!tg->grr_se)
-		goto err;
-
-
-	for_each_possible_cpu(i) {
-		grr_rq = kzalloc_node(sizeof(struct grr_rq),
-				      GFP_KERNEL, cpu_to_node(i));
-		if (!grr_rq)
-			goto err;
-
-		grr_se = kzalloc_node(sizeof(struct sched_entity),
-				  GFP_KERNEL, cpu_to_node(i));
-		if (!grr_se)
-			goto err_free_rq;
-
-		init_grr_rq(grr_rq);
-		init_tg_grr_entry(tg, grr_rq, grr_se, i, grr_se->parent);
-	}
-
+	char * st = task_group_path_grr(task_group(p));
+	if (strcmp(st, "/apps/bg_non_interactive") == 0) return 2;
 	return 1;
-
-err_free_rq:
-	kfree(grr_rq);
-err:
-	return 0;
 }
-#else /* !CONFIG_GRR_GROUP_SCHED */
 
-/*Qiming Chen*/
+
 #define for_each_sched_grr_entity(rt_se) \
 	for (; grr_se; grr_se = NULL)
 
@@ -152,9 +69,6 @@ static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
 {
 	return NULL;
 }
-
-/* CONFIG_GRR_GROUP_SCHED */
-#endif 
 
 /***************************************************************
 * Helping Methods
