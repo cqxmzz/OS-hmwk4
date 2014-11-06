@@ -1,4 +1,6 @@
 #include "sched.h"
+#include <linux/mm.h>
+#include <linux/slab.h>
 
 /*
  * grr-task scheduling class.
@@ -108,7 +110,7 @@ int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent)
 			goto err_free_rq;
 
 		init_grr_rq(grr_rq);
-		init_tg_grr_entry(tg, grr_rq, grr_se, i, parent->se[i]);
+		init_tg_grr_entry(tg, grr_rq, grr_se, i, grr_se->parent);
 	}
 
 	return 1;
@@ -609,13 +611,10 @@ static void switched_to_grr(struct rq *rq, struct task_struct *p)
 */
 #ifdef CONFIG_SMP
 
-static DEFINE_PER_CPU(cpumask_var_t, local_cpu_mask);
-
 /* helper function: help to find cpu to assign task*/
 static int find_lowest_rq(struct task_struct *task)
 {
 	struct rq *rq;
-	struct grr_rq *grr_rq;
 	int cpu, best_cpu, nr;
 	int lowest_nr = INT_MAX;
 
