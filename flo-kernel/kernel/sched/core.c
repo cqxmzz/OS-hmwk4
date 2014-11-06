@@ -88,8 +88,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
-#define FOREGROUND 1
-#define BACKGROUND 2
 
 /*define timer for load balance*/
 static struct hrtimer grr_balance_timer;
@@ -98,15 +96,27 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer);
 
 ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 
+/* Caiyuannan */
+
+static void migrate_all_tasks(int src_cpu, int dest_cpu);
+
 /* Qiming Chen */
 SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 {
+
+	#define FOREGROUND 1
+	#define BACKGROUND 2
+	#define FORE2BACK 0
+	#define BACK2FORE 1
+
 	int totalCores ＝ 4;
 	int cpu;
+	int srcCpu, destCpu;
 	struct rq *rq = NULL;
 	struct task_struct *curr = NULL;
 	int *cpusForForeground = NULL, *cpusForBackground = NULL;
 	int numberOfCpusForForground = 0, numberOfCpusForBackground = 0;
+	int diff;
 	/* number of cores online */
 	totalCores = sysconf(_SC_NPROCESSORS_ONLN);
 	if (totalCores < 0) {
@@ -163,14 +173,40 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 
 	if (group == FOREGROUND) {
 		if (numberOfCpusForForeground < numCPU) {
-
+			diff = numCPU - numberOfCpusForForeground;
+			dir = BACK2FORE;
+		} else {
+			diff = numberOfCpusForForeground - numCPU;
+			dir = FORE2BACK;
 		}
 	} else {
+		if (numberOfCpusForBackground < numCPU) {
+			diff = numCPU - numberOfCpusForBackground;
+			dir = FORE2BACK;
+		} else {
+			diff = numberOfCpusForBackground - numCPU;
+			dir = BACK2FORE;
+		}
+	}
 
+	if (dir == BACK2FORE) {
+		for (int i = 0; i < diff; i++) {
+			srcCpu = cpusForBackground[i];
+			destCpu = cpusForForeground[0];
+			migrate_all_tasks(srcCpu, destCpu);
+		}
+	} else {
+		for (int i = 0; i < diff; i++) {
+			srcCpu = cpusForForeground[i];
+			destCpu = cpusForBackground[0];
+			migrate_all_tasks(srcCpu, destCpu);
+		}
 	}
 
 	return 1;
 }
+
+
 
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
 {
@@ -5325,7 +5361,40 @@ static void migrate_tasks(unsigned int dead_cpu)
 
 	rq->stop = stop;
 }
+/* Caiyuannan */
+static void migrate_all_tasks(int src_cpu, int dest_cpu)
+{
+	struct src_rq *rq = cpu_rq(src_cpu);
+	struct task_struct *next, *stop = src_rq->stop;
+	// int dest_cpu;
 
+	src_rq->stop = NULL;
+
+	/* Ensure any throttled groups are reachable by pick_next_task */
+	unthrottle_offline_cfs_rqs(src_rq);
+
+	for ( ; ; ) {
+		/*
+		* There's this thread running, bail when that's the only
+		* remaining thread.
+		*/
+		if (src_rq->nr_running == 1)
+			break;
+
+		next = pick_next_task(src_rq);
+		BUG_ON(!next);
+		next->sched_class->put_prev_task(src_rq, next);
+
+		/* Find suitable destination for @next, with force if needed. */
+		raw_spin_unlock(&src_rq->lock);
+
+		__migrate_task(next, src_cpu, dest_cpu);
+
+		raw_spin_lock(&src_rq->lock);
+	}
+
+	src_rq->stop = stop;
+}
 #endif /* CONFIG_HOTPLUG_CPU */
 
 #if defined(CONFIG_SCHED_DEBUG) && defined(CONFIG_SYSCTL)
