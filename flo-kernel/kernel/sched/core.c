@@ -1785,6 +1785,7 @@ void sched_fork(struct task_struct *p)
 			take priority over tasks using the SCHED_NORMAL policy, 
 			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
 			//p->policy = SCHED_GRR; 
+			p->policy = SCHED_NORMAL; 
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
@@ -1801,7 +1802,8 @@ void sched_fork(struct task_struct *p)
 	}
 
 	if (!rt_prio(p->prio))
-		p->sched_class = &grr_sched_class;
+		p->sched_class = &fair_sched_class;
+		//p->sched_class = &grr_sched_class;
 
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
@@ -6922,8 +6924,8 @@ void __init sched_init_smp(void)
 	init_hrtick();
 
 	/* start my own grr rebalance timer */
-	period_ktime = timespec_to_ktime(period);
-	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
+	//period_ktime = timespec_to_ktime(period);
+	//hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
 
 	/* Move init over to a non-isolated CPU */
 	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
@@ -7012,8 +7014,8 @@ void __init sched_init(void)
 #ifdef CONFIG_SMP
 	init_defrootdomain();
 	/*Wendan Kang*/
-	hrtimer_init(&grr_balance_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	grr_balance_timer.function = print_current_time;
+	//hrtimer_init(&grr_balance_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	//grr_balance_timer.function = print_current_time;
 #endif
 
 	init_rt_bandwidth(&def_rt_bandwidth,
@@ -7149,7 +7151,8 @@ void __init sched_init(void)
 	 * During early bootup we pretend to be a normal task:
 	 */
 	 /*Wendan Kang: do we need to change that?*/
-	current->sched_class = &grr_sched_class;
+	//current->sched_class = &grr_sched_class;
+	 current->sched_class = &fair_sched_class;
 
 #ifdef CONFIG_SMP
 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
