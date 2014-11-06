@@ -1,6 +1,7 @@
 #include "sched.h"
 #include <linux/mm.h>
 #include <linux/slab.h>
+#include <linux/limits.h>
 
 /*
  * grr-task scheduling class.
@@ -9,27 +10,27 @@
  *  handled in sched_fair.c)
  */
 
-
-
 /**************************************************************
  * GRR operations on generic schedulable entities:
  */
 
 /*Qiming Chen*/
 
+static char group_path_grr[PATH_MAX];
+
 static char *task_group_path_grr(struct task_group *tg)
 {
-	if (autogroup_path(tg, group_path, PATH_MAX))
-		return group_path;
+	if (autogroup_path(tg, group_path_grr, PATH_MAX))
+		return group_path_grr;
 	/*
 	 * May be NULL if the underlying cgroup isn't fully-created yet
 	 */
 	if (!tg->css.cgroup) {
-		group_path[0] = '\0';
-		return group_path;
+		group_path_grr[0] = '\0';
+		return group_path_grr;
 	}
-	cgroup_path(tg->css.cgroup, group_path, PATH_MAX);
-	return group_path;
+	cgroup_path(tg->css.cgroup, group_path_grr, PATH_MAX);
+	return group_path_grr;
 }
 
 static int get_group(struct task_struct * p)
