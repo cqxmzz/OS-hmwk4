@@ -163,9 +163,31 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 	read_unlock_irqrestore(&tasklist_lock, flags);
 }
 
-void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *cfs_rq)
+void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
 {
+#ifdef CONFIG_GRR_GROUP_SCHED
+	SEQ_printf(m, "\ngrr_rq[%d]:%s\n", cpu, task_group_path(grr_rq->tg));
+#else
 	SEQ_printf(m, "\ngrr_rq[%d]:\n", cpu);
+#endif
+	SEQ_printf(m, "  .%-30s: %Ld\n", "grr_nr_running", grr_rq->grr_nr_running);
+	SEQ_printf(m, "  .%-30s: %Ld\n", "size", grr_rq->size);
+
+#ifdef CONFIG_FAIR_GROUP_SCHED
+#ifdef CONFIG_SMP
+	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "load_avg",
+			SPLIT_NS(grr_rq->load_avg));
+	SEQ_printf(m, "  .%-30s: %Ld.%06ld\n", "load_period",
+			SPLIT_NS(grr_rq->load_period));
+	SEQ_printf(m, "  .%-30s: %ld\n", "load_contribution",
+			grr_rq->load_contribution);
+	SEQ_printf(m, "  .%-30s: %d\n", "load_tg",
+			atomic_read(&grr_rq->tg->load_weight));
+#endif
+
+	/*print_grr_group_stats(m, cpu, grr_rq->tg);*/
+#endif
+
 }
 
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
