@@ -357,11 +357,11 @@ void init_grr_rq(struct grr_rq *grr_rq)
  * by this scheduler */
 static void init_task_grr(struct task_struct *p)
 {
-	printk("[cqm]in init_task_grr now");
 	struct sched_grr_entity *grr_se;
 	if (p == NULL)
 		return;
-
+	printk("[cqm]in init_task_grr now\n");
+	
 	grr_se = &p->grr;
 	grr_se->task = p;
 	/*init time_slice, also as time left*/
@@ -392,7 +392,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_grr_entity *new_se;
 	struct sched_grr_entity *grr_se;
 	struct grr_rq *grr_rq = &rq->grr;
-	printk("[cqm]int enqueue_task now");
+	printk("[cqm]int enqueue_task now\n");
 	grr_se = &grr_rq->run_queue;
 
 	init_task_grr(p); /* initializes the grr_entity in task_struct */
@@ -406,13 +406,12 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 
 	/* add it to the queue.*/
 	head = &grr_se->run_list;
-	printk("[cqm]list add tail in enqueue");
+	printk("[cqm]list add tail in enqueue\n");
 	list_add_tail(&new_se->run_list, head);
 
 	/* update statistics counts */
 	++grr_rq->grr_nr_running;
 	++grr_rq->size;
-	p->se.on_rq = 1;
 	spin_unlock(&grr_rq->grr_rq_lock);
 }
 
@@ -438,7 +437,6 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	/* update statistics counts */
 	--grr_rq->grr_nr_running;
 	--grr_rq->size;
-	p->se.on_rq = 0;
 	spin_unlock(&grr_rq->grr_rq_lock);
 }
 
