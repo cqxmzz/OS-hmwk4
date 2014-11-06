@@ -1784,9 +1784,7 @@ void sched_fork(struct task_struct *p)
 			Tasks using the SCHED_GRR policy should
 			take priority over tasks using the SCHED_NORMAL policy,
 			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
-			//printk("[cqm]p->policy = SCHED_GRR;");
 			p->policy = SCHED_GRR;
-			//p->policy = SCHED_NORMAL;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
@@ -1803,7 +1801,6 @@ void sched_fork(struct task_struct *p)
 	}
 
 	if (!rt_prio(p->prio))
-		//p->sched_class = &fair_sched_class;
 		p->sched_class = &grr_sched_class;
 
 	if (p->sched_class->task_fork)
@@ -3268,9 +3265,6 @@ need_resched:
 		rq->curr = next;
 		++*switch_count;
 		
-		//printk(" context_switch");
-		//printk(" %s", prev->comm);
-		//printk(" %s", next->comm);
 		context_switch(rq, prev, next); /* unlocks the rq */
 		/*
 		 * The context switch have flipped the stack from under us
@@ -4089,7 +4083,6 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	set_load_weight(p);
 	/* Wendan Kang: Set the sched class for the grr policy */
 	if (p->policy == SCHED_GRR) {
-		//printk("[cqm]p->sched_class = &grr_sched_class;");
 		p->sched_class = &grr_sched_class;
 	}
 }
@@ -4257,10 +4250,8 @@ recheck:
 
 	if (running)
 		p->sched_class->set_curr_task(rq);
-	if (on_rq){
-		//printk("[cqm]enqueue_task(rq, p, 0);\n");
+	if (on_rq)
 		enqueue_task(rq, p, 0);
-	}
 
 	check_class_changed(rq, p, prev_class, oldprio);
 	task_rq_unlock(rq, p, &flags);
@@ -6932,8 +6923,8 @@ void __init sched_init_smp(void)
 	init_hrtick();
 
 	/* start my own grr rebalance timer */
-	//period_ktime = timespec_to_ktime(period);
-	//hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
+	period_ktime = timespec_to_ktime(period);
+	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
 
 	/* Move init over to a non-isolated CPU */
 	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
@@ -7022,8 +7013,8 @@ void __init sched_init(void)
 #ifdef CONFIG_SMP
 	init_defrootdomain();
 	/*Wendan Kang*/
-	//hrtimer_init(&grr_balance_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	//grr_balance_timer.function = print_current_time;
+	hrtimer_init(&grr_balance_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	grr_balance_timer.function = print_current_time;
 #endif
 
 	init_rt_bandwidth(&def_rt_bandwidth,
@@ -7160,8 +7151,7 @@ void __init sched_init(void)
 	 */
 	 /*Wendan Kang: do we need to change that?*/
 	current->sched_class = &grr_sched_class;
-	//current->sched_class = &fair_sched_class;
-
+	
 #ifdef CONFIG_SMP
 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
 	/* May be allocated at isolcpus cmdline parse time */
