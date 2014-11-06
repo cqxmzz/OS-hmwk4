@@ -104,7 +104,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	int i;
 	int count;
 	struct task_struct *g, *p;
-
+	unsigned long flags;
 	if (cpu_group[numCPU] == group)
 		return 0;
 	count = 0;
@@ -116,7 +116,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	if (count <= 1)
 		return -1;
 	cpu_group[numCPU] = group;
-
+	
 	write_lock_irqsave(&tasklist_lock, flags);
 	do_each_thread(g, p) {
 		if (!p->on_rq || task_cpu(p) != numCPU)

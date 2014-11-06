@@ -156,7 +156,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 */
 #ifdef CONFIG_SMP
 
-static void grr_rq_load_balance(void)
+static void grr_rq_load_balance(int g)
 {
 	int cpu;
  	int dest_cpu; /* id of cpu to move to */
@@ -173,11 +173,12 @@ static void grr_rq_load_balance(void)
  	int lowest_size = INT_MAX;
  	int highest_size = INT_MIN;
 
-	//printk("[cqm]requeue_task_grr\n");
  	/* get highest and lowest grr_rq Qiming Chen */
  	for_each_online_cpu(cpu) {
  		rq = cpu_rq(cpu);
  		if (rq == NULL)
+ 			continue;
+ 		if (cpu_group[cpu] != g)
  			continue;
  		curr_grr_rq = &rq->grr;
  		if (curr_grr_rq->size > highest_size) {
@@ -235,7 +236,8 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer)
         //printk("[cqm]print_current_time\n");
  	period_ktime = timespec_to_ktime(period);
 
-        grr_rq_load_balance();
+        grr_rq_load_balance(1);
+        grr_rq_load_balance(2);
 
         hrtimer_forward(timer, timer->base->get_time(), period_ktime);
         return HRTIMER_RESTART;
@@ -393,6 +395,12 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	--grr_rq->size;
 	spin_unlock(&grr_rq->grr_rq_lock);
 	dec_nr_running(rq);
+#ifdef CONFIG_SMP
+
+	if (rq->grr->size == 0)
+		grr_rq_load_balance(get_group(p));
+
+#endif
 }
 
 static void yield_task_grr(struct rq *rq)
