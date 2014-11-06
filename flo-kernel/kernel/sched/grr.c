@@ -323,7 +323,7 @@ void print_grr_stats(struct seq_file *m, int cpu)
 	struct grr_rq *grr_rq;
 
 	rcu_read_lock();
-	grr_rq = cpu_rq(cpu)->grr;
+	grr_rq = &cpu_rq(cpu)->grr;
 	print_grr_rq(m, cpu, grr_rq);
 	rcu_read_unlock();
 }

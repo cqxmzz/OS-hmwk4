@@ -15,7 +15,7 @@
 #include <linux/seq_file.h>
 #include <linux/kallsyms.h>
 #include <linux/utsname.h>
-
+#include <linux/sched.h>
 #include "sched.h"
 
 static DEFINE_SPINLOCK(sched_debug_lock);
