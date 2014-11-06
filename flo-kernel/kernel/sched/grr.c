@@ -180,6 +180,7 @@ static void update_curr_grr(struct rq *rq)
 	struct task_struct *curr = rq->curr;
 	u64 delta_exec;
 
+	printk("[cqm]update_curr_grr\n");
 	if (curr->sched_class != &grr_sched_class)
 		return;
 
@@ -202,6 +203,7 @@ static void update_curr_grr(struct rq *rq)
  */
 static void requeue_grr_entity(struct grr_rq *grr_rq, struct sched_grr_entity *grr_se, int head)
 {
+	printk("[cqm]requeue_grr_entity\n");
 	if (on_grr_rq(grr_se)) {
 		struct list_head *queue;
 		queue = &grr_rq->run_queue.run_list;
@@ -218,6 +220,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 	struct sched_grr_entity *grr_se = &p->grr;
 	struct grr_rq *grr_rq;
 
+	printk("[cqm]requeue_task_grr\n");
 	for_each_sched_grr_entity(grr_se) {
 		grr_rq = grr_rq_of_se(grr_se);
 		requeue_grr_entity(grr_rq, grr_se, head);
@@ -233,7 +236,7 @@ static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
 #ifdef CONFIG_SMP
 static void grr_rq_load_balance(void)
 {
- 	int cpu;
+	int cpu;
  	int dest_cpu; /* id of cpu to move to */
  	struct rq *rq;
  	struct sched_grr_entity *highest_task;
@@ -246,7 +249,8 @@ static void grr_rq_load_balance(void)
  	int lowest_size = INT_MAX;
  	int highest_size = INT_MIN;
 
-	/* get highest and lowest grr_rq Qiming Chen */
+	printk("[cqm]requeue_task_grr\n");
+ 	/* get highest and lowest grr_rq Qiming Chen */
  	for_each_online_cpu(cpu) {
  		rq = cpu_rq(cpu);
  		if (rq == NULL)
@@ -299,7 +303,8 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer)
                 .tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
                 .tv_sec = 0
         };
-        period_ktime = timespec_to_ktime(period);
+        printk("[cqm]print_current_time\n");
+ 	period_ktime = timespec_to_ktime(period);
 
         grr_rq_load_balance();
 
@@ -317,6 +322,18 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer)
 //	return NULL;
 //}
 
+#ifdef CONFIG_SCHED_DEBUG
+void print_grr_stats(struct seq_file *m, int cpu)
+{
+	struct grr_rq *grr_rq;
+
+	printk("[cqm]print_grr_stats\n");
+	rcu_read_lock();
+	grr_rq = &cpu_rq(cpu)->grr;
+	print_grr_rq(m, cpu, grr_rq);
+	rcu_read_unlock();
+}
+#endif
 
 /*Wendan Kang: After change this fuction, change the relatives in kernel/sched/sched.h line 1197(approx)*/
 /*The parameter(s) may have two options considering fair.c and rt.c:
@@ -327,12 +344,12 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer)
 void init_grr_rq(struct grr_rq *grr_rq)
 {
 	struct sched_grr_entity *grr_se;
+	
+	printk("[cqm]init_grr_rq\n");
 	grr_rq->grr_nr_running = 0;
 	grr_rq->size = 0;
 	grr_rq->curr = NULL;
-
 	spin_lock_init(&(grr_rq->grr_rq_lock));
-
 	/* Initialize the run queue list */
 	grr_se = &grr_rq->run_queue;
 	INIT_LIST_HEAD(&grr_se->run_list);
@@ -349,7 +366,8 @@ static void init_task_grr(struct task_struct *p)
 	struct sched_grr_entity *grr_se;
 	if (p == NULL)
 		return;
-
+	printk("[cqm]init_task_grr\n");
+	
 	grr_se = &p->grr;
 	grr_se->task = p;
 	/*init time_slice, also as time left*/
@@ -363,11 +381,13 @@ static void init_task_grr(struct task_struct *p)
 
 static void task_fork_grr(struct task_struct *p)
 {
+	printk("[cqm]task_fork_grr\n");
 	init_task_grr(p);
 }
 
 void init_sched_grr_class(void)
 {
+	printk("[cqm]init_sched_grr_class\n");
 	/*don't know whether we need to implement that*/
 }
 
@@ -375,11 +395,12 @@ void init_sched_grr_class(void)
 static void
 enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 {
+
 	struct list_head *head;
 	struct sched_grr_entity *new_se;
 	struct sched_grr_entity *grr_se;
 	struct grr_rq *grr_rq = &rq->grr;
-
+	printk("[cqm]enqueue_task\n");
 	grr_se = &grr_rq->run_queue;
 
 	init_task_grr(p); /* initializes the grr_entity in task_struct */
@@ -398,8 +419,8 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	/* update statistics counts */
 	++grr_rq->grr_nr_running;
 	++grr_rq->size;
-
 	spin_unlock(&grr_rq->grr_rq_lock);
+	inc_nr_running(rq);
 }
 
 
@@ -407,6 +428,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 static void
 dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 {
+	printk("[cqm]dequeue_task_grr\n");
 	struct sched_grr_entity *grr_se = &p->grr;
 	struct grr_rq *grr_rq = grr_rq_of_se(grr_se);
 
@@ -424,12 +446,13 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	/* update statistics counts */
 	--grr_rq->grr_nr_running;
 	--grr_rq->size;
-
 	spin_unlock(&grr_rq->grr_rq_lock);
+	dec_nr_running(rq);
 }
 
 static void yield_task_grr(struct rq *rq)
 {
+	printk("[cqm]yield_task_grr\n");
 	requeue_task_grr(rq, rq->curr, 0);
 }
 
@@ -439,7 +462,7 @@ static struct sched_grr_entity *pick_next_grr_entity(struct rq *rq,
 	struct sched_grr_entity *first;
 	struct sched_grr_entity *next = NULL;
 	struct list_head *queue;
-
+	printk("[cqm]pick_next_grr_entity\n");
 	first = &grr_rq->run_queue;
 	queue = &first->run_list;
 	next = list_entry(queue->next, struct sched_grr_entity, run_list);
@@ -453,6 +476,7 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 	struct grr_rq *grr_rq = &rq->grr;
 	struct sched_grr_entity *grr_se;
 
+	printk("[cqm]pick_next_task_grr\n");
 	if (!grr_rq->grr_nr_running)
 		return NULL;
 
@@ -473,11 +497,13 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 
 static void put_prev_task_grr(struct rq *rq, struct task_struct *prev)
 {
+	printk("[cqm]put_prev_task_grr\n");
 	update_curr_grr(rq);
 	/*Wendan Kang: there is more we can do here*/
 }
 static void set_curr_task_grr(struct rq *rq)
 {
+	printk("[cqm]set_curr_task_grr\n");
 	struct task_struct *p = rq->curr;
 	p->se.exec_start = rq->clock_task;
 	rq->grr.curr = &p->grr;
@@ -486,7 +512,7 @@ static void set_curr_task_grr(struct rq *rq)
 static void watchdog(struct rq *rq, struct task_struct *p)
 {
 	unsigned long soft, hard;
-
+	printk("[cqm]watchdog\n");
 	/* max may change after cur was read, this will be fixed next tick */
 	soft = task_rlimit(p, RLIMIT_RTTIME);
 	hard = task_rlimit_max(p, RLIMIT_RTTIME);
@@ -504,14 +530,12 @@ static void watchdog(struct rq *rq, struct task_struct *p)
 static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 {
 	struct sched_grr_entity *grr_se = &p->grr;
+	printk("[cqm]task_tick_grr\n");
 
 	update_curr_grr(rq);
-
 	watchdog(rq, p);
-
 	if (p->policy != SCHED_GRR)
 		return;
-
 	if (--p->grr.time_slice)
 		return;
 
@@ -544,7 +568,8 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
  * */
 static void switched_to_grr(struct rq *rq, struct task_struct *p)
 {
-	init_task_grr(p);
+	printk("[cqm]switched_to_grr\n");
+	//init_task_grr(p);
 }
 /***************************************************************
 * SMP Function below
@@ -560,6 +585,7 @@ static int find_lowest_rq(struct task_struct *task)
 	int this_cpu = smp_processor_id();
 	int cpu      = task_cpu(task);
 
+	printk("[cqm]find_lowest_rq\n");
 	/* Make sure the mask is initialized first */
 	if (unlikely(!lowest_mask))
 		return -1;
@@ -631,6 +657,8 @@ static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
 {
 	int cpu;
 	int target;
+
+	printk("[cqm]select_task_rq_grr\n");
 	cpu = task_cpu(p);
 
 	if (p->grr.nr_cpus_allowed == 1)
@@ -652,10 +680,12 @@ out:
 }
 
 static void task_woken_grr(struct rq *rq, struct task_struct *p) {
+	printk("[cqm]task_woken_grr\n");
 	init_task_grr(p);
 }
 
 static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
+	printk("[cqm]get_rr_interval_grr\n");
 	if (task == NULL)
 		return -EINVAL;
 	return GRR_TIMESLICE;
