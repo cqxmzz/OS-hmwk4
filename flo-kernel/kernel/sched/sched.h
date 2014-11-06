@@ -34,7 +34,11 @@ extern __read_mostly int scheduler_running;
 #define NICE_0_LOAD		SCHED_LOAD_SCALE
 #define NICE_0_SHIFT		SCHED_LOAD_SHIFT
 
+#ifdef CONFIG_SMP
 
+static int cpu_group[NR_CPUS] = {[0 ... NR_CPUS/2-1] = 1, [NR_CPUS/2 ... NR_CPUS-1] = 2};
+
+#endif
 
 /*
  * These are the 'tuning knobs' of the scheduler:
