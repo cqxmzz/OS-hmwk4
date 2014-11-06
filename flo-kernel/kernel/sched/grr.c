@@ -160,8 +160,8 @@ static void grr_rq_load_balance(int g)
 {
 	int cpu;
  	int dest_cpu; /* id of cpu to move to */
- 	int highest_cpu;
- 	int lowest_cpu;
+ 	int highest_cpu = 0;
+ 	int lowest_cpu = NR_CPUS;
  	struct rq *rq;
  	struct sched_grr_entity *highest_task;
  	struct list_head *head;
@@ -194,22 +194,24 @@ static void grr_rq_load_balance(int g)
  			lowest_cpu = cpu;
  		}
  	}
+ 	printk("1");
  	if (lowest_grr_rq == NULL || highest_grr_rq == NULL)
  		return;
-
+ 	printk("2");
  	if (cpu_group[highest_cpu] != cpu_group[lowest_cpu])
  		return;
-
+ 	printk("3");
  	/* See if we can do move  */
  	if (lowest_grr_rq == highest_grr_rq || highest_size - lowest_size < 2)
  		return;
-
+ 	printk("4");
  	/* See if we can do move  */
  	rcu_read_lock();
  	double_rq_lock(highest_rq, lowest_rq);
 
  	/* See if we can do move  */
  	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
+ 		printk("5");
  		head = &highest_grr_rq->run_queue.run_list;
  		if (head->next != head) {
  			highest_task = list_entry(head, struct sched_grr_entity, run_list);
