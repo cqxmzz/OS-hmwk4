@@ -1784,7 +1784,7 @@ void sched_fork(struct task_struct *p)
 			Tasks using the SCHED_GRR policy should
 			take priority over tasks using the SCHED_NORMAL policy,
 			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
-			printk("p->policy = SCHED_GRR;");
+			printk("[cqm]p->policy = SCHED_GRR;");
 			//p->policy = SCHED_GRR;
 			p->policy = SCHED_NORMAL;
 			p->static_prio = NICE_TO_PRIO(0);
@@ -4086,7 +4086,7 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	set_load_weight(p);
 	/* Wendan Kang: Set the sched class for the grr policy */
 	if (p->policy == SCHED_GRR) {
-		printk("p->sched_class = &grr_sched_class;");
+		[printk("[cqm]p->sched_class = &grr_sched_class;");
 		p->sched_class = &grr_sched_class;
 	}
 }
@@ -4254,8 +4254,10 @@ recheck:
 
 	if (running)
 		p->sched_class->set_curr_task(rq);
-	if (on_rq)
+	if (on_rq){
+		printk("[cqm]enqueue_task(rq, p, 0);\n");
 		enqueue_task(rq, p, 0);
+	}
 
 	check_class_changed(rq, p, prev_class, oldprio);
 	task_rq_unlock(rq, p, &flags);
