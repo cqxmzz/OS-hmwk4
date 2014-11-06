@@ -553,7 +553,7 @@ static void watchdog(struct rq *rq, struct task_struct *p)
 static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 {
 	struct sched_grr_entity *grr_se = &p->grr;
-	printk("[cqm]task_tick_grr\n");
+	//printk("[cqm]task_tick_grr\n");
 	//printk("%s", p->comm);
 
 	update_curr_grr(rq);
