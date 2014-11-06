@@ -97,6 +97,18 @@ ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 /* Qiming Chen */
 SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 {
+	int numberOfCoresAvailable;
+	/* number of cores online */
+	numberOfCores = sysconf(_SC_NPROCESSORS_ONLN);
+	if (numberOfCoresAvailable < 0) {
+		/* -1 cannot get number of cores */
+		return -1;
+	}
+	if (numCPU <= 0 || numCPU >= numberOfCoresAvailable) {
+		/* -2 indicates numCPU is invalid */
+		return -2;
+	}
+	
 	return 1;
 }
 
