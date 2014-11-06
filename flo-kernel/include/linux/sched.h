@@ -1273,7 +1273,6 @@ struct sched_grr_entity {
 	 * define in this file, too.
 	 */
 	unsigned int time_slice;
-	int nr_cpus_allowed;
 #ifdef CONFIG_GRR_GROUP_SCHED	
 	struct sched_grr_entity	*parent;
 	/* rq on which this entity is (to be) queued: */

@@ -152,7 +152,6 @@ extern struct cred init_cred;
 		.run_list = LIST_HEAD_INIT(tsk.grr.run_list),		\
 		.task = &tsk, 						\
 		.time_slice = GRR_TIMESLICE,				\
-		.nr_cpus_allowed = NR_CPUS,				\
 	},          							\
 	.cpus_allowed	= CPU_MASK_ALL,					\
 	.mm		= NULL,						\

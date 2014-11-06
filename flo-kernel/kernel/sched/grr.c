@@ -25,7 +25,7 @@ static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
 #ifdef CONFIG_SCHED_DEBUG
 	WARN_ON_ONCE(!grr_entity_is_task(grr_se));
 #endif
-	return container_of(grr_se, struct task_struct, grr);
+	return grr_se->task;
 }
 
 /* runqueue on which this entity is (to be) queued */
@@ -136,7 +136,7 @@ int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent){
 /* We probabily don't need this if we have the task pointer Qiming Chen*/
 static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
 {
-	return container_of(grr_se, struct task_struct, grr);
+	return grr_se->task;
 }
 
 static inline struct grr_rq *grr_rq_of_se(struct sched_grr_entity *grr_se)
@@ -195,7 +195,7 @@ static void update_curr_grr(struct rq *rq)
 	account_group_exec_runtime(curr, delta_exec);
 
 	curr->se.exec_start = rq->clock_task;
-	cpuacct_charge(curr, delta_exec);
+	cpuacct_charge(c`urr, delta_exec);
 }
 /*
  * Put task to the head or the end of the run list without the overhead of
@@ -208,10 +208,14 @@ static void requeue_grr_entity(struct grr_rq *grr_rq, struct sched_grr_entity *g
 		struct list_head *queue;
 		queue = &grr_rq->run_queue.run_list;
 
+		if (grr_rq->size == 1)
+			return;
+		spin_lock(&grr_rq->grr_rq_lock);
 		if (head)
 			list_move(&grr_se->run_list, queue);
 		else
 			list_move_tail(&grr_se->run_list, queue);
+		spin_unlock(&grr_rq->grr_rq_lock);
 	}
 }
 
@@ -385,7 +389,17 @@ static void task_fork_grr(struct task_struct *p)
 {
 	printk("[cqm]task_fork_grr\n");
 	printk("%s", p->comm);
-	init_task_grr(p);
+	struct sched_grr_entity *grr_entity;
+	if (p == NULL)
+		return;
+	grr_entity = &p->wrr;
+	grr_entity->task = p;
+
+	/* We keep the weight of the parent. We re-initialize
+	 * the other values that are derived from the parent's weight */
+
+	wrr_entity->time_slice = GRR_TIMESLICE;
+	
 }
 
 void init_sched_grr_class(void)
@@ -418,7 +432,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 
 	/* add it to the queue.*/
 	head = &grr_se->run_list;
-	list_add_tail(&new_se->run_list, head);
+	list_add_tail(&new_se>run_list, head);
 
 	/* update statistics counts */
 	++grr_rq->grr_nr_running;
@@ -478,13 +492,15 @@ static struct sched_grr_entity *pick_next_grr_entity(struct rq *rq,
 static struct task_struct *pick_next_task_grr(struct rq *rq)
 {
 	struct task_struct *p;
+	struct sched_grr_entity *head_entity;
+	struct sched_grr_entity *next_entity;
+	struct list_head *head;
 	struct grr_rq *grr_rq = &rq->grr;
 	struct sched_grr_entity *grr_se;
 
 	//printk("[cqm]pick_next_task_grr\n");
-	if (!grr_rq->grr_nr_running)
+	if (rq->nr_running <= 0)
 		return NULL;
-
 	do {
 		grr_se = pick_next_grr_entity(rq, grr_rq);
 		BUG_ON(!grr_se);
@@ -495,6 +511,10 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 	} while (grr_rq);
 
 	p = grr_task_of(grr_se);
+
+	if (p == NULL)
+		return p;
+
 	p->se.exec_start = rq->clock_task;
 
 	return p;
@@ -555,9 +575,9 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	for_each_sched_grr_entity(grr_se) {
 		if (grr_se->run_list.prev != grr_se->run_list.next) {
 			requeue_task_grr(rq, p, 0);
-			set_tsk_need_resched(p);
 			return;
 		}
+		set_tsk_need_resched(p);
 	}
 }
 
@@ -577,8 +597,12 @@ static void switched_to_grr(struct rq *rq, struct task_struct *p)
 {
 	printk("[cqm]switched_to_grr\n");
 	printk("%s", p->comm);
-	//init_task_grr(p);
+	struct sched_wrr_entity *wrr_entity = &p->wrr;
+	grr_entity->task = p;
+
+	grr_entity->time_slice = GRR_TIMESLICE;
 }
+
 /***************************************************************
 * SMP Function below
 */
@@ -691,7 +715,7 @@ out:
 static void task_woken_grr(struct rq *rq, struct task_struct *p) {
 	printk("[cqm]task_woken_grr\n");
 	printk("%s", p->comm);
-	init_task_grr(p);
+	//init_task_grr(p);
 }
 
 static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
