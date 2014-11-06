@@ -476,7 +476,7 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 	struct grr_rq *grr_rq = &rq->grr;
 	struct sched_grr_entity *grr_se;
 
-	printk("[cqm]pick_next_task_grr\n");
+	//printk("[cqm]pick_next_task_grr\n");
 	if (!grr_rq->grr_nr_running)
 		return NULL;
 
