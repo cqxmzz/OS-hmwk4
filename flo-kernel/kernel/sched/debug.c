@@ -165,6 +165,7 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 
 void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
 {
+/*
 #ifdef CONFIG_GRR_GROUP_SCHED
 	SEQ_printf(m, "\ngrr_rq[%d]:%s\n", cpu, task_group_path(grr_rq->tg));
 #else
@@ -185,9 +186,8 @@ void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
 			atomic_read(&grr_rq->tg->load_weight));
 #endif
 
-	/*print_grr_group_stats(m, cpu, grr_rq->tg);*/
 #endif
-
+*/
 }
 
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)

@@ -4086,7 +4086,7 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	set_load_weight(p);
 	/* Wendan Kang: Set the sched class for the grr policy */
 	if (p->policy == SCHED_GRR) {
-		[printk("[cqm]p->sched_class = &grr_sched_class;");
+		printk("[cqm]p->sched_class = &grr_sched_class;");
 		p->sched_class = &grr_sched_class;
 	}
 }
