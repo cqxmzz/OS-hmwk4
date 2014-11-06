@@ -196,7 +196,7 @@ static void grr_rq_load_balance(void)
  	if (lowest_grr_rq == NULL || highest_grr_rq == NULL)
  		return;
 
- 	if (cpu_group[highest_cpu] != cpu_group[highest_cpu])
+ 	if (cpu_group[highest_cpu] != cpu_group[lowest_cpu])
  		return;
 
  	/* See if we can do move  */
@@ -548,7 +548,7 @@ static int find_lowest_rq(struct task_struct *task)
 
 		if (cpu_group[cpu] != get_group(task))
 			continue;
-		
+
 		if (nr < lowest_nr) {
 			lowest_nr = nr;
 			best_cpu = cpu;

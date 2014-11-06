@@ -7422,8 +7422,10 @@ void sched_move_task(struct task_struct *tsk)
 		tsk->sched_class->task_move_group(tsk, on_rq);
 	else
 #endif
+	if (tsk->policy != SCHED_GRR)
 		set_task_rq(tsk, task_cpu(tsk));
-
+	else
+		set_task_rq(tsk, cpu_rq(find_lowest_rq(tsk)));
 	if (unlikely(running))
 		tsk->sched_class->set_curr_task(rq);
 	if (on_rq)
