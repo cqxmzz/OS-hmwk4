@@ -562,7 +562,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 		return;
 	if (--p->grr.time_slice > 0)
 		return;
-	printk("[cqm]time slice = 0\n");
+	//printk("[cqm]time slice = 0\n");
 	p->grr.time_slice = GRR_TIMESLICE;
 
 	/*
@@ -571,8 +571,9 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	 */
 	for_each_sched_grr_entity(grr_se) {
 		if (grr_se->run_list.prev != grr_se->run_list.next) {
-			printk("tick -> requeue %s \n", p->comm);
+			//printk("tick -> requeue %s \n", p->comm);
 			requeue_task_grr(rq, p, 0);
+			set_tsk_need_resched(p);
 			return;
 		}
 		set_tsk_need_resched(p);
