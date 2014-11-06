@@ -553,16 +553,16 @@ static void watchdog(struct rq *rq, struct task_struct *p)
 static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 {
 	struct sched_grr_entity *grr_se = &p->grr;
-	//printk("[cqm]task_tick_grr\n");
+	printk("[cqm]task_tick_grr\n");
 	//printk("%s", p->comm);
 
 	update_curr_grr(rq);
 	//watchdog(rq, p);
 	if (p->policy != SCHED_GRR)
 		return;
-	if (--p->grr.time_slice)
+	if (--p->grr.time_slice > 0)
 		return;
-
+	printk("[cqm]time slice = 0\n");
 	p->grr.time_slice = GRR_TIMESLICE;
 
 	/*
