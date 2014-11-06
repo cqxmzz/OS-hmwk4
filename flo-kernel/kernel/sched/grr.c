@@ -391,7 +391,6 @@ static void task_fork_grr(struct task_struct *p)
 void init_sched_grr_class(void)
 {
 	printk("[cqm]init_sched_grr_class\n");
-	printk("%s", p->comm);
 	/*don't know whether we need to implement that*/
 }
 
@@ -483,7 +482,7 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 	struct sched_grr_entity *grr_se;
 
 	//printk("[cqm]pick_next_task_grr\n");
-	 (!grr_rq->grr_nr_running)
+	if (!grr_rq->grr_nr_running)
 		return NULL;
 
 	do {
