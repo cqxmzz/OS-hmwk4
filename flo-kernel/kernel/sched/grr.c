@@ -571,6 +571,7 @@ static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
 	 */
 	for_each_sched_grr_entity(grr_se) {
 		if (grr_se->run_list.prev != grr_se->run_list.next) {
+			printk("tick -> requeue %s \n", p->comm);
 			requeue_task_grr(rq, p, 0);
 			return;
 		}
