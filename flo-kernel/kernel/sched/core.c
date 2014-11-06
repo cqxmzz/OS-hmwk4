@@ -1781,11 +1781,12 @@ void sched_fork(struct task_struct *p)
 	if (unlikely(p->sched_reset_on_fork)) {
 		if (task_has_rt_policy(p)) {
 			/*Wendan Kang:
-			Tasks using the SCHED_GRR policy should 
-			take priority over tasks using the SCHED_NORMAL policy, 
+			Tasks using the SCHED_GRR policy should
+			take priority over tasks using the SCHED_NORMAL policy,
 			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
-			//p->policy = SCHED_GRR; 
-			p->policy = SCHED_NORMAL; 
+
+			//p->policy = SCHED_GRR;
+			p->policy = SCHED_NORMAL;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
@@ -2423,7 +2424,7 @@ void calc_global_load(unsigned long ticks)
 	 * Account one period with whatever state we found before
 	 * folding in the nohz state and ageing the entire idle period.
 	 *
-	 * This avoids loosing a sample when we go idle between 
+	 * This avoids loosing a sample when we go idle between
 	 * calc_load_account_active() (10 ticks ago) and now and thus
 	 * under-accounting.
 	 */
@@ -7408,7 +7409,7 @@ void sched_destroy_group(struct task_group *tg)
  *	by now. This function just updates tsk->se.cfs_rq and tsk->se.parent to
  *	reflect its new group.
  */
-/* Wendan Kang: not sure whether we need to do something about 
+/* Wendan Kang: not sure whether we need to do something about
  * move task below. Scared by what it did of RT. T_T
  */
 void sched_move_task(struct task_struct *tsk)
