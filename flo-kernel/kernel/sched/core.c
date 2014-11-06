@@ -202,7 +202,10 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 			migrate_all_tasks(srcCpu, destCpu);
 		}
 	}
-
+	free(rq);
+	free(curr);
+	free(cpusForForground);
+	free(cpusForBackground);
 	return 1;
 }
 
