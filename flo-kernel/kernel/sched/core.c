@@ -100,24 +100,24 @@ ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
 /* Qiming Chen */
 SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 {
-	int numberOfCores ＝ 4;
+	int totalCores ＝ 4;
 	int cpu;
 	struct rq *rq = NULL;
 	struct task_struct *curr = NULL;
 	int *cpusForForeground = NULL, *cpusForBackground = NULL;
 	int numberOfCpusForForground = 0, numberOfCpusForBackground = 0;
 	/* number of cores online */
-	numberOfCores = sysconf(_SC_NPROCESSORS_ONLN);
-	if (numberOfCores < 0) {
+	totalCores = sysconf(_SC_NPROCESSORS_ONLN);
+	if (totalCores < 0) {
 		/* -1 cannot get number of cores */
 		return -1;
 	}
-	if (numCPU <= 0 || numCPU >= numberOfCores) {
+	if (numCPU <= 0 || numCPU >= totalCores) {
 		/* -2 indicates numCPU is invalid */
 		return -2;
 	}
-	cpusForForeground = (int *) malloc(numberOfCores, sizeof(int));
-	cpusForBackground = (int *) calloc(numberOfCores, sizeof(int));
+	cpusForForeground = (int *) malloc(totalCores, sizeof(int));
+	cpusForBackground = (int *) malloc(totalCores, sizeof(int));
  	for_each_online_cpu(cpu) {
 		char *groupPath = NULL;
  		rq = cpu_rq(cpu);
@@ -160,7 +160,13 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 		return -4;
 	}
 
-	
+	if (group == FOREGROUND) {
+		if (numberOfCpusForForeground < numCPU) {
+
+		}
+	} else {
+
+	}
 
 	return 1;
 }
