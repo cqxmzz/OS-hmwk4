@@ -1747,7 +1747,7 @@ static void __sched_fork(struct task_struct *p)
 #endif
 
 	INIT_LIST_HEAD(&p->rt.run_list);
-	INIT_LIST_HEAD(&p->grr.run_list); /*init grr runqueue*/
+	//INIT_LIST_HEAD(&p->grr.run_list); /*init grr runqueue*/
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);

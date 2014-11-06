@@ -163,6 +163,11 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 	read_unlock_irqrestore(&tasklist_lock, flags);
 }
 
+void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *cfs_rq)
+{
+	SEQ_printf(m, "\ngrr_rq[%d]:\n", cpu);
+}
+
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
 {
 	s64 MIN_vruntime = -1, min_vruntime, max_vruntime = -1,
@@ -303,7 +308,7 @@ static void print_cpu(struct seq_file *m, int cpu)
 	spin_lock_irqsave(&sched_debug_lock, flags);
 	print_cfs_stats(m, cpu);
 	print_rt_stats(m, cpu);
-
+	print_grr_stats(m, cpu);
 	rcu_read_lock();
 	print_rq(m, rq, cpu);
 	rcu_read_unlock();

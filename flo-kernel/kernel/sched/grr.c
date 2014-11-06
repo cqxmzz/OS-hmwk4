@@ -317,6 +317,17 @@ enum hrtimer_restart print_current_time(struct hrtimer *timer)
 //	return NULL;
 //}
 
+#ifdef CONFIG_SCHED_DEBUG
+void print_grr_stats(struct seq_file *m, int cpu)
+{
+	struct grr_rq *grr_rq;
+
+	rcu_read_lock();
+	grr_rq = cpu_rq(cpu)->grr;
+	print_grr_rq(m, cpu, grr_rq);
+	rcu_read_unlock();
+}
+#endif
 
 /*Wendan Kang: After change this fuction, change the relatives in kernel/sched/sched.h line 1197(approx)*/
 /*The parameter(s) may have two options considering fair.c and rt.c:
@@ -398,7 +409,7 @@ enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	/* update statistics counts */
 	++grr_rq->grr_nr_running;
 	++grr_rq->size;
-
+	p->se.on_rq = 1;
 	spin_unlock(&grr_rq->grr_rq_lock);
 }
 
@@ -424,7 +435,7 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	/* update statistics counts */
 	--grr_rq->grr_nr_running;
 	--grr_rq->size;
-
+	p->se.on_rq = 0;
 	spin_unlock(&grr_rq->grr_rq_lock);
 }
 
