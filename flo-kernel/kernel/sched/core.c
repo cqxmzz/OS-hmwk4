@@ -1747,7 +1747,7 @@ static void __sched_fork(struct task_struct *p)
 #endif
 
 	INIT_LIST_HEAD(&p->rt.run_list);
-	//INIT_LIST_HEAD(&p->grr.run_list); /*init grr runqueue*/
+	INIT_LIST_HEAD(&p->grr.run_list); /*init grr runqueue*/
 
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
@@ -1785,8 +1785,8 @@ void sched_fork(struct task_struct *p)
 			take priority over tasks using the SCHED_NORMAL policy,
 			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
 
-			//p->policy = SCHED_GRR;
-			p->policy = SCHED_NORMAL;
+			p->policy = SCHED_GRR;
+			//p->policy = SCHED_NORMAL;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
@@ -1803,8 +1803,8 @@ void sched_fork(struct task_struct *p)
 	}
 
 	if (!rt_prio(p->prio))
-		p->sched_class = &fair_sched_class;
-		//p->sched_class = &grr_sched_class;
+		//p->sched_class = &fair_sched_class;
+		p->sched_class = &grr_sched_class;
 
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
