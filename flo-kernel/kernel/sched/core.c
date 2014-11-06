@@ -104,7 +104,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	int cpu;
 	struct rq *rq = NULL;
 	struct task_struct *curr = NULL;
-	int *cpusForForground = NULL, *cpusForBackground = NULL;
+	int *cpusForForeground = NULL, *cpusForBackground = NULL;
 	int numberOfCpusForForground = 0, numberOfCpusForBackground = 0;
 	/* number of cores online */
 	numberOfCores = sysconf(_SC_NPROCESSORS_ONLN);
@@ -116,7 +116,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 		/* -2 indicates numCPU is invalid */
 		return -2;
 	}
-	cpusForForground = (int *) malloc(numberOfCores, sizeof(int));
+	cpusForForeground = (int *) malloc(numberOfCores, sizeof(int));
 	cpusForBackground = (int *) calloc(numberOfCores, sizeof(int));
  	for_each_online_cpu(cpu) {
 		char *groupPath = NULL;
@@ -135,11 +135,32 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 		if (groupPath[1] == '\0') {
 			cpusForBackground[numberOfCpusForBackground++] = cpu;
 		} else if (groupPath[5] == '\0') {
-			cpusForForground[numberOfCpusForForground++] = cpu;
+			cpusForForeground[numberOfCpusForForeground++] = cpu;
 		} else if (groupPath[24] == '\0') {
 			cpusForBackground[numberOfCpusForBackground++] = cpu;
 		}
 	}
+
+	if ((group == FOREGROUND && numberOfCpusForForeground == numCPU) ||
+		(group == BACKGROUND && numberOfCpusForBackground == numCPU)) {
+		free(rq);
+		free(curr);
+		free(cpusForForground);
+		free(cpusForBackground);
+		/* -3 indicates no need to do any allocation */
+		return -3;
+	}
+
+	if (group != FOREGROUND && group != BACKGROUND) {
+		/* -4 group value is invalid */
+		free(rq);
+		free(curr);
+		free(cpusForForground);
+		free(cpusForBackground);
+		return -4;
+	}
+
+	
 
 	return 1;
 }
