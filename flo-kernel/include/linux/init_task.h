@@ -147,7 +147,7 @@ extern struct cred init_cred;
 	.prio		= MAX_PRIO-20,					\
 	.static_prio	= MAX_PRIO-20,					\
 	.normal_prio	= MAX_PRIO-20,					\
-	.policy		= SCHED_NORMAL,/*change from NORMAL to GRR*/	\
+	.policy		= SCHED_GRR,/*change from NORMAL to GRR*/	\
 	.grr 		= {						\
 		.run_list = LIST_HEAD_INIT(tsk.grr.run_list),		\
 		.task = &tsk, 						\

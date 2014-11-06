@@ -165,6 +165,7 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 
 void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
 {
+	SEQ_printf(m, "  .%-30s: %d\n", "grr_nr_running", grr_rq->grr_nr_running);
 /*
 #ifdef CONFIG_GRR_GROUP_SCHED
 	SEQ_printf(m, "\ngrr_rq[%d]:%s\n", cpu, task_group_path(grr_rq->tg));
