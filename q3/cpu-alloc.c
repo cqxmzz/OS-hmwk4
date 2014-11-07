@@ -10,15 +10,16 @@ int main(int argc, const char *argv[])
 {
 	int group;
 	int numCPU;
-	
+	int i;
 	printf("input group\n");
 	
-	scanf("%d\n", group);
+	scanf("%d", &group);
 	
 	printf("input num\n");
 	
-	scanf("%d\n", numCPU);
+	scanf("%d", &numCPU);
 	
-	syscall(378, numCPU, group);
+	i = syscall(378, numCPU, group);
+	printf("%d", i);
 	return 0;
 }

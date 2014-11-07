@@ -93,6 +93,8 @@
 static struct hrtimer grr_balance_timer;
 enum hrtimer_restart print_current_time(struct hrtimer *timer);
 
+int cpu_group[NR_CPUS] = {[0 ... NR_CPUS/2-1] = 1, [NR_CPUS/2 ... NR_CPUS-1] = 2};
+
 #endif
 
 

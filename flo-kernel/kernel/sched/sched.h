@@ -1,4 +1,5 @@
-
+#ifndef __SCHED_H__
+#define __SCHED_H__
 #include <linux/sched.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
@@ -36,7 +37,7 @@ extern __read_mostly int scheduler_running;
 
 #ifdef CONFIG_SMP
 
-static int cpu_group[NR_CPUS] = {[0 ... NR_CPUS/2-1] = 1, [NR_CPUS/2 ... NR_CPUS-1] = 2};
+extern int cpu_group[NR_CPUS];
 
 #endif
 
@@ -1201,4 +1202,6 @@ enum rq_nohz_flag_bits {
 };
 
 #define nohz_flags(cpu)	(&cpu_rq(cpu)->nohz_flags)
+#endif
+
 #endif
