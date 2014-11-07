@@ -175,12 +175,19 @@ static void grr_rq_load_balance(int g)
 
  	/* get highest and lowest grr_rq Qiming Chen */
  	for_each_online_cpu(cpu) {
+ 		print
  		rq = cpu_rq(cpu);
  		if (rq == NULL)
  			continue;
  		if (cpu_group[cpu] != g)
  			continue;
  		curr_grr_rq = &rq->grr;
+ 		printk("balance");
+ 		
+ 		printk("%d\n", cpu);
+ 		printk("%d\n", curr_grr_rq->size);
+ 		printk("%d\n", cpu_group[cpu]);
+
  		if (curr_grr_rq->size > highest_size) {
  			highest_grr_rq = curr_grr_rq;
  			highest_size = curr_grr_rq->size;
@@ -194,25 +201,21 @@ static void grr_rq_load_balance(int g)
  			lowest_cpu = cpu;
  		}
  	}
- 	printk("1");
+ 	
  	if (lowest_grr_rq == NULL || highest_grr_rq == NULL)
  		return;
- 	printk("2");
  	if (cpu_group[highest_cpu] != cpu_group[lowest_cpu])
  		return;
- 	printk("3");
  	/* See if we can do move  */
  	if (lowest_grr_rq == highest_grr_rq || highest_size - lowest_size < 2)
  		return;
- 	printk("4");
  	/* See if we can do move  */
  	rcu_read_lock();
  	double_rq_lock(highest_rq, lowest_rq);
 
  	/* See if we can do move  */
  	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
- 		printk("5");
- 		head = &highest_grr_rq->run_queue.run_list;
+ 		shead = &highest_grr_rq->run_queue.run_list;
  		if (head->next != head) {
  			highest_task = list_entry(head, struct sched_grr_entity, run_list);
 			rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
@@ -399,8 +402,8 @@ dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
 	dec_nr_running(rq);
 #ifdef CONFIG_SMP
 
-	if (rq->grr.size == 0)
-		grr_rq_load_balance(get_group(p));
+	//if (rq->grr.size == 0)
+	//	grr_rq_load_balance(get_group(p));
 
 #endif
 }
