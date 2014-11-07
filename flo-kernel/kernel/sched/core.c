@@ -106,15 +106,16 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	struct task_struct *g, *p;
 	unsigned long flags;
 	if (cpu_group[numCPU] == group)
-		return 0;
+		return 1;
 	count = 0;
 	for(i = 0; i < NR_CPUS; ++i)
 	{
 		if (cpu_group[i] != group)
 			count++;
 	}
-	if (count <= 1)
+	if (count <= 1 || group > 2 || group < 1 || numCPU >= NR_CPUS || numCPU < 0)
 		return -1;
+
 	cpu_group[numCPU] = group;
 	
 	write_lock_irqsave(&tasklist_lock, flags);
