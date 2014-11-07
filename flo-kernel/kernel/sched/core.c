@@ -1813,9 +1813,9 @@ void sched_fork(struct task_struct *p)
 		if (task_has_rt_policy(p)) {
 			/*Wendan Kang:
 			 *Tasks using the SCHED_GRR policy should
-			 *take priority over tasks using the 
+			 *take priority over tasks using the
 			 *SCHED_NORMAL policy,
-			 *but not over tasks using the 
+			 *but not over tasks using the
 			 *SCHED_RR or SCHED_FIFO policies
 			 */
 			p->policy = SCHED_GRR;
