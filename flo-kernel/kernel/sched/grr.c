@@ -170,7 +170,9 @@ static void grr_rq_load_balance(int g)
 	struct rq *rq_of_task_to_move;
 	struct rq *rq_of_lowest_grr; /*rq of thing with smallest weight */
 	struct rq *highest_rq = NULL, *lowest_rq = NULL;
-	struct grr_rq *lowest_grr_rq = NULL, *highest_grr_rq = NULL, *curr_grr_rq;
+	struct grr_rq *lowest_grr_rq = NULL,
+			*highest_grr_rq = NULL,
+			*curr_grr_rq;
 	int lowest_size = INT_MAX;
 	int highest_size = INT_MIN;
 
@@ -209,10 +211,13 @@ static void grr_rq_load_balance(int g)
 	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
 		head = &highest_grr_rq->run_queue.run_list;
 		if (head->next != head) {
-			highest_task = list_entry(head, struct sched_grr_entity, run_list);
-			rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
+			highest_task = list_entry(head, struct sched_grr_entity,
+							run_list);
+			rq_of_lowest_grr = container_of(lowest_grr_rq,
+							struct rq, grr);
 			dest_cpu = rq_of_lowest_grr->cpu;
-			task_to_move = container_of(highest_task, struct task_struct, grr);
+			task_to_move = container_of(highest_task,
+						struct task_struct, grr);
 			rq_of_task_to_move = task_rq(task_to_move);
 			deactivate_task(rq_of_task_to_move, task_to_move, 0);
 			set_task_cpu(task_to_move, dest_cpu);
@@ -259,9 +264,9 @@ void print_grr_stats(struct seq_file *m, int cpu)
 	rcu_read_unlock();
 }
 #endif
-
-/*Wendan Kang: After change this fuction, change the relatives in 
- *kernel/sched/sched.h line 1197(approx)*/
+/*Wendan Kang: After change this fuction, change the relatives in
+ *kernel/sched/sched.h line 1197(approx)
+ */
 /*The parameter(s) may have two options considering fair.c and rt.c:
 *1. struct rq *rq, struct grr_rq *grr_rq
 *2. struct grr_rq *grr_rq
@@ -404,7 +409,7 @@ static struct task_struct *pick_next_task_grr(struct rq *rq)
 	do {
 		grr_se = pick_next_grr_entity(rq, grr_rq);
 		BUG_ON(!grr_se);
-		/* Wendan Kang: If grr_se contains a group, 
+		/* Wendan Kang: If grr_se contains a group,
 		 * need to find the first task in that group.
 		 */
 		grr_rq = group_grr_rq(grr_se);
@@ -580,7 +585,8 @@ static unsigned int get_rr_interval_grr(struct rq *rq,
 	return GRR_TIMESLICE;
 }
 
-static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags)
+static void check_preempt_curr_grr(struct rq *rq,
+				struct task_struct *p, int flags)
 {
 }
 

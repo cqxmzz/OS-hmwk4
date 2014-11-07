@@ -111,7 +111,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	if (cpu_group[numCPU] == group)
 		return 0;
 	count = 0;
-	for(i = 0; i < NR_CPUS; ++i) {
+	for (i = 0; i < NR_CPUS; ++i) {
 		if (cpu_group[i] != group)
 			count++;
 	}
@@ -1813,7 +1813,8 @@ void sched_fork(struct task_struct *p)
 		if (task_has_rt_policy(p)) {
 			/*Wendan Kang:
 			 *Tasks using the SCHED_GRR policy should
-			 *take priority over tasks using the SCHED_NORMAL policy,
+			 *take priority over tasks using the 
+			 *SCHED_NORMAL policy,
 			 *but not over tasks using the 
 			 *SCHED_RR or SCHED_FIFO policies
 			 */
@@ -6956,7 +6957,7 @@ void __init sched_init_smp(void)
 	/* start my own grr rebalance timer */
 #ifdef CONFIG_SMP
 	period_ktime = timespec_to_ktime(period);
-	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);	
+	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
 #endif
 
 	/* Move init over to a non-isolated CPU */
@@ -7167,7 +7168,7 @@ void __init sched_init(void)
 	 * During early bootup we pretend to be a normal task:
 	 */
 	 /*Wendan Kang: do we need to change that?*/
-	current->sched_class = &grr_sched_class;	
+	current->sched_class = &grr_sched_class;
 #ifdef CONFIG_SMP
 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
 	/* May be allocated at isolcpus cmdline parse time */

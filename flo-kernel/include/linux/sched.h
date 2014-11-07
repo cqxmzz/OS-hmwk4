@@ -1266,7 +1266,7 @@ struct sched_grr_entity {
 	/* Make a list out of the items */
 	struct list_head run_list;
 	/* The task that is to be scheduled */
-	struct task_struct *task;	
+	struct task_struct *task;
 	/* the current time slice for this task
 	 * when it runs our its time, give it the GRR_TIMESLICE,
 	 * define in this file, too.

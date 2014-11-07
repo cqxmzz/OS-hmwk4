@@ -327,7 +327,7 @@ struct rt_rq {
 };
 
 /* grr classes' related field in a runqueue: */
-struct grr_rq {	
+struct grr_rq {
 	unsigned long grr_nr_running;
 	/* the current size of the queue */
 	unsigned long size;
