@@ -93,7 +93,8 @@
 static struct hrtimer grr_balance_timer;
 enum hrtimer_restart print_current_time(struct hrtimer *timer);
 
-int cpu_group[NR_CPUS] = {[0 ... NR_CPUS/2-1] = 1, [NR_CPUS/2 ... NR_CPUS-1] = 2};
+int cpu_group[NR_CPUS] = {[0 ... NR_CPUS/2-1] = 1,
+			[NR_CPUS/2 ... NR_CPUS-1] = 2};
 
 #endif
 
@@ -108,18 +109,17 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	struct task_struct *g, *p;
 	unsigned long flags;
 	if (cpu_group[numCPU] == group)
-		return 1;
+		return 0;
 	count = 0;
-	for(i = 0; i < NR_CPUS; ++i)
-	{
+	for(i = 0; i < NR_CPUS; ++i) {
 		if (cpu_group[i] != group)
 			count++;
 	}
-	if (count <= 1 || group > 2 || group < 1 || numCPU >= NR_CPUS || numCPU < 0)
-		return -1;
+	if (count <= 1 || group > 2 || group < 1 ||
+		numCPU >= NR_CPUS || numCPU < 0)
+		return -EINVAL;
 
 	cpu_group[numCPU] = group;
-	
 	write_lock_irqsave(&tasklist_lock, flags);
 	do_each_thread(g, p) {
 		if (!p->on_rq || task_cpu(p) != numCPU)
@@ -129,7 +129,7 @@ SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
 	} while_each_thread(g, p);
 	write_unlock_irqrestore(&tasklist_lock, flags);
 	return 0;
-} 
+}
 
 void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
 {
@@ -1812,9 +1812,11 @@ void sched_fork(struct task_struct *p)
 	if (unlikely(p->sched_reset_on_fork)) {
 		if (task_has_rt_policy(p)) {
 			/*Wendan Kang:
-			Tasks using the SCHED_GRR policy should
-			take priority over tasks using the SCHED_NORMAL policy,
-			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
+			 *Tasks using the SCHED_GRR policy should
+			 *take priority over tasks using the SCHED_NORMAL policy,
+			 *but not over tasks using the 
+			 *SCHED_RR or SCHED_FIFO policies
+			 */
 			p->policy = SCHED_GRR;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
@@ -3295,7 +3297,6 @@ need_resched:
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;
-		
 		context_switch(rq, prev, next); /* unlocks the rq */
 		/*
 		 * The context switch have flipped the stack from under us
@@ -4113,9 +4114,8 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 		p->sched_class = &fair_sched_class;
 	set_load_weight(p);
 	/* Wendan Kang: Set the sched class for the grr policy */
-	if (p->policy == SCHED_GRR) {
+	if (p->policy == SCHED_GRR)
 		p->sched_class = &grr_sched_class;
-	}
 }
 
 /*
@@ -4156,10 +4156,10 @@ recheck:
 	} else {
 		reset_on_fork = !!(policy & SCHED_RESET_ON_FORK);
 		policy &= ~SCHED_RESET_ON_FORK;
-
+		/* Wendan Kang*/
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
 				policy != SCHED_NORMAL && policy != SCHED_BATCH &&
-				policy != SCHED_IDLE && policy != SCHED_GRR) /*Wendan Kang*/
+				policy != SCHED_IDLE && policy != SCHED_GRR)
 			return -EINVAL;
 	}
 
@@ -6954,12 +6954,10 @@ void __init sched_init_smp(void)
 	init_hrtick();
 
 	/* start my own grr rebalance timer */
-	#ifdef CONFIG_SMP
-	
+#ifdef CONFIG_SMP
 	period_ktime = timespec_to_ktime(period);
-	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
-	
-	#endif
+	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);	
+#endif
 
 	/* Move init over to a non-isolated CPU */
 	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
@@ -7169,8 +7167,7 @@ void __init sched_init(void)
 	 * During early bootup we pretend to be a normal task:
 	 */
 	 /*Wendan Kang: do we need to change that?*/
-	current->sched_class = &grr_sched_class;
-	
+	current->sched_class = &grr_sched_class;	
 #ifdef CONFIG_SMP
 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
 	/* May be allocated at isolcpus cmdline parse time */

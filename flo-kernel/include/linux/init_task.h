@@ -148,11 +148,11 @@ extern struct cred init_cred;
 	.static_prio	= MAX_PRIO-20,					\
 	.normal_prio	= MAX_PRIO-20,					\
 	.policy		= SCHED_GRR,/*change from NORMAL to GRR*/	\
-	.grr 		= {						\
+	.grr		= {						\
 		.run_list = LIST_HEAD_INIT(tsk.grr.run_list),		\
-		.task = &tsk, 						\
+		.task = &tsk,						\
 		.time_slice = GRR_TIMESLICE,				\
-	},          							\
+	},								\
 	.cpus_allowed	= CPU_MASK_ALL,					\
 	.mm		= NULL,						\
 	.active_mm	= &init_mm,					\

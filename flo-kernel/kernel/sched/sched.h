@@ -203,7 +203,8 @@ extern void init_tg_rt_entry(struct task_group *tg, struct rt_rq *rt_rq,
 
 /* Wendan Kang: may need extern some load balance function here*/
 extern void free_grr_sched_group(struct task_group *tg);
-extern int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent);
+extern int alloc_grr_sched_group(struct task_group *tg,
+				struct task_group *parent);
 extern void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
 		struct sched_grr_entity *grr_se, int cpu,
 		struct sched_grr_entity *parent);
@@ -325,10 +326,8 @@ struct rt_rq {
 #endif
 };
 
-//https://piazza.com/class/hxmyhj3hhcj16l?cid=338
 /* grr classes' related field in a runqueue: */
-struct grr_rq {
-	
+struct grr_rq {	
 	unsigned long grr_nr_running;
 	/* the current size of the queue */
 	unsigned long size;

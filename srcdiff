@@ -1,0 +1,1362 @@
+diff --git a/flo-kernel/arch/arm/include/asm/unistd.h b/flo-kernel/arch/arm/include/asm/unistd.h
+index 512cd14..8d4944e 100644
+--- a/flo-kernel/arch/arm/include/asm/unistd.h
++++ b/flo-kernel/arch/arm/include/asm/unistd.h
+@@ -404,6 +404,7 @@
+ #define __NR_setns			(__NR_SYSCALL_BASE+375)
+ #define __NR_process_vm_readv		(__NR_SYSCALL_BASE+376)
+ #define __NR_process_vm_writev		(__NR_SYSCALL_BASE+377)
++ #define __NR_sched_set_CPUgroup		(__NR_SYSCALL_BASE+378) /*part 2 system call for assigning cpu to groups*/
+ 
+ /*
+  * The following SWIs are ARM private.
+diff --git a/flo-kernel/include/linux/init_task.h b/flo-kernel/include/linux/init_task.h
+index e4baff5..29acf69 100644
+--- a/flo-kernel/include/linux/init_task.h
++++ b/flo-kernel/include/linux/init_task.h
+@@ -147,7 +147,12 @@ extern struct cred init_cred;
+ 	.prio		= MAX_PRIO-20,					\
+ 	.static_prio	= MAX_PRIO-20,					\
+ 	.normal_prio	= MAX_PRIO-20,					\
+-	.policy		= SCHED_NORMAL,					\
++	.policy		= SCHED_GRR,/*change from NORMAL to GRR*/	\
++	.grr 		= {						\
++		.run_list = LIST_HEAD_INIT(tsk.grr.run_list),		\
++		.task = &tsk, 						\
++		.time_slice = GRR_TIMESLICE,				\
++	},          							\
+ 	.cpus_allowed	= CPU_MASK_ALL,					\
+ 	.mm		= NULL,						\
+ 	.active_mm	= &init_mm,					\
+diff --git a/flo-kernel/include/linux/sched.h b/flo-kernel/include/linux/sched.h
+index ff6bb0f..f56e2e8 100644
+--- a/flo-kernel/include/linux/sched.h
++++ b/flo-kernel/include/linux/sched.h
+@@ -39,9 +39,14 @@
+ #define SCHED_BATCH		3
+ /* SCHED_ISO: reserved but not implemented yet */
+ #define SCHED_IDLE		5
++/* GRR policy for homework 4*/
++#define SCHED_GRR       6
+ /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
+ #define SCHED_RESET_ON_FORK     0x40000000
+ 
++/* rebelance time period in nano seconds */
++#define SCHED_GRR_REBALANCE_TIME_PERIOD_NS 500000000
++
+ #ifdef __KERNEL__
+ 
+ struct sched_param {
+@@ -151,12 +156,16 @@ extern unsigned long get_parent_ip(unsigned long addr);
+ 
+ struct seq_file;
+ struct cfs_rq;
++struct grr_rq;
+ struct task_group;
++
+ #ifdef CONFIG_SCHED_DEBUG
+ extern void proc_sched_show_task(struct task_struct *p, struct seq_file *m);
+ extern void proc_sched_set_task(struct task_struct *p);
+ extern void
+ print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq);
++extern void
++print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *cfs_rq);
+ #else
+ static inline void
+ proc_sched_show_task(struct task_struct *p, struct seq_file *m)
+@@ -169,6 +178,10 @@ static inline void
+ print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
+ {
+ }
++static inline void
++print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *cfs_rq)
++{
++}
+ #endif
+ 
+ /*
+@@ -1248,12 +1261,31 @@ struct sched_rt_entity {
+ #endif
+ };
+ 
++/*Wendan Kang*/
++struct sched_grr_entity {
++	/* Make a list out of the items */
++	struct list_head run_list;
++	/* The task that is to be scheduled */
++	struct task_struct *task;
++	
++	/* the current time slice for this task
++	 * when it runs our its time, give it the GRR_TIMESLICE,
++	 * define in this file, too.
++	 */
++	unsigned int time_slice;
++};
++
+ /*
+  * default timeslice is 100 msecs (used only for SCHED_RR tasks).
+  * Timeslices get refilled after they expire.
+  */
+ #define RR_TIMESLICE		(100 * HZ / 1000)
+ 
++/*
++ * default timeslice is 100 ms, only for GRR policy
++ */
++#define GRR_TIMESLICE		(100 * HZ / 1000)
++
+ struct rcu_node;
+ 
+ enum perf_event_task_context {
+@@ -1281,6 +1313,7 @@ struct task_struct {
+ 	const struct sched_class *sched_class;
+ 	struct sched_entity se;
+ 	struct sched_rt_entity rt;
++	struct sched_grr_entity grr; /*Wendan Kang*/
+ 
+ #ifdef CONFIG_PREEMPT_NOTIFIERS
+ 	/* list of struct preempt_notifier: */
+diff --git a/flo-kernel/include/linux/syscalls.h b/flo-kernel/include/linux/syscalls.h
+index 3de3acb..f376e78 100644
+--- a/flo-kernel/include/linux/syscalls.h
++++ b/flo-kernel/include/linux/syscalls.h
+@@ -857,5 +857,6 @@ asmlinkage long sys_process_vm_writev(pid_t pid,
+ 				      const struct iovec __user *rvec,
+ 				      unsigned long riovcnt,
+ 				      unsigned long flags);
++asmlinkage long sys_sched_set_CPUgroup(int numCPU, int group);
+ 
+ #endif
+diff --git a/flo-kernel/kernel/cpu.c b/flo-kernel/kernel/cpu.c
+index 4f9701b..a64efa2 100644
+--- a/flo-kernel/kernel/cpu.c
++++ b/flo-kernel/kernel/cpu.c
+@@ -409,7 +409,7 @@ int disable_nonboot_cpus(void)
+ 	for_each_online_cpu(cpu) {
+ 		if (cpu == first_cpu)
+ 			continue;
+-		error = 0;//_cpu_down(cpu, 1);
++		error = 1;//_cpu_down(cpu, 1);
+ 		if (!error)
+ 			cpumask_set_cpu(cpu, frozen_cpus);
+ 		else {
+diff --git a/flo-kernel/kernel/kthread.c b/flo-kernel/kernel/kthread.c
+index 3d3de63..3de2112 100644
+--- a/flo-kernel/kernel/kthread.c
++++ b/flo-kernel/kernel/kthread.c
+@@ -203,7 +203,7 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
+ 		 * root may have changed our (kthreadd's) priority or CPU mask.
+ 		 * The kernel thread should not inherit these properties.
+ 		 */
+-		sched_setscheduler_nocheck(create.result, SCHED_NORMAL, &param);
++		sched_setscheduler_nocheck(create.result, SCHED_GRR, &param);
+ 		set_cpus_allowed_ptr(create.result, cpu_all_mask);
+ 	}
+ 	return create.result;
+diff --git a/flo-kernel/kernel/sched/core.c b/flo-kernel/kernel/sched/core.c
+index 1cee48f..d3110f2 100644
+--- a/flo-kernel/kernel/sched/core.c
++++ b/flo-kernel/kernel/sched/core.c
+@@ -87,8 +87,50 @@
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/sched.h>
+ 
++/*define timer for load balance*/
++#ifdef CONFIG_SMP
++
++static struct hrtimer grr_balance_timer;
++enum hrtimer_restart print_current_time(struct hrtimer *timer);
++
++int cpu_group[NR_CPUS] = {[0 ... NR_CPUS/2-1] = 1, [NR_CPUS/2 ... NR_CPUS-1] = 2};
++
++#endif
++
++
+ ATOMIC_NOTIFIER_HEAD(migration_notifier_head);
+ 
++/* Qiming Chen */
++SYSCALL_DEFINE2(sched_set_CPUgroup, int, numCPU, int, group)
++{
++	int i;
++	int count;
++	struct task_struct *g, *p;
++	unsigned long flags;
++	if (cpu_group[numCPU] == group)
++		return 1;
++	count = 0;
++	for(i = 0; i < NR_CPUS; ++i)
++	{
++		if (cpu_group[i] != group)
++			count++;
++	}
++	if (count <= 1 || group > 2 || group < 1 || numCPU >= NR_CPUS || numCPU < 0)
++		return -1;
++
++	cpu_group[numCPU] = group;
++	
++	write_lock_irqsave(&tasklist_lock, flags);
++	do_each_thread(g, p) {
++		if (!p->on_rq || task_cpu(p) != numCPU)
++			continue;
++
++		sched_move_task(p);
++	} while_each_thread(g, p);
++	write_unlock_irqrestore(&tasklist_lock, flags);
++	return 0;
++} 
++
+ void start_bandwidth_timer(struct hrtimer *period_timer, ktime_t period)
+ {
+ 	unsigned long delta;
+@@ -1736,6 +1778,7 @@ static void __sched_fork(struct task_struct *p)
+ #endif
+ 
+ 	INIT_LIST_HEAD(&p->rt.run_list);
++	INIT_LIST_HEAD(&p->grr.run_list); /*init grr runqueue*/
+ 
+ #ifdef CONFIG_PREEMPT_NOTIFIERS
+ 	INIT_HLIST_HEAD(&p->preempt_notifiers);
+@@ -1768,7 +1811,11 @@ void sched_fork(struct task_struct *p)
+ 	 */
+ 	if (unlikely(p->sched_reset_on_fork)) {
+ 		if (task_has_rt_policy(p)) {
+-			p->policy = SCHED_NORMAL;
++			/*Wendan Kang:
++			Tasks using the SCHED_GRR policy should
++			take priority over tasks using the SCHED_NORMAL policy,
++			but not over tasks using the SCHED_RR or SCHED_FIFO policies*/
++			p->policy = SCHED_GRR;
+ 			p->static_prio = NICE_TO_PRIO(0);
+ 			p->rt_priority = 0;
+ 		} else if (PRIO_TO_NICE(p->static_prio) < 0)
+@@ -1785,7 +1832,7 @@ void sched_fork(struct task_struct *p)
+ 	}
+ 
+ 	if (!rt_prio(p->prio))
+-		p->sched_class = &fair_sched_class;
++		p->sched_class = &grr_sched_class;
+ 
+ 	if (p->sched_class->task_fork)
+ 		p->sched_class->task_fork(p);
+@@ -1798,6 +1845,7 @@ void sched_fork(struct task_struct *p)
+ 	 * Silence PROVE_RCU.
+ 	 */
+ 	raw_spin_lock_irqsave(&p->pi_lock, flags);
++	/* Wendan Kang: assign task to cpu here, need to implement.*/
+ 	set_task_cpu(p, cpu);
+ 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
+ 
+@@ -2404,7 +2452,7 @@ void calc_global_load(unsigned long ticks)
+ 	 * Account one period with whatever state we found before
+ 	 * folding in the nohz state and ageing the entire idle period.
+ 	 *
+-	 * This avoids loosing a sample when we go idle between 
++	 * This avoids loosing a sample when we go idle between
+ 	 * calc_load_account_active() (10 ticks ago) and now and thus
+ 	 * under-accounting.
+ 	 */
+@@ -3247,7 +3295,7 @@ need_resched:
+ 		rq->nr_switches++;
+ 		rq->curr = next;
+ 		++*switch_count;
+-
++		
+ 		context_switch(rq, prev, next); /* unlocks the rq */
+ 		/*
+ 		 * The context switch have flipped the stack from under us
+@@ -4064,6 +4112,10 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
+ 	else
+ 		p->sched_class = &fair_sched_class;
+ 	set_load_weight(p);
++	/* Wendan Kang: Set the sched class for the grr policy */
++	if (p->policy == SCHED_GRR) {
++		p->sched_class = &grr_sched_class;
++	}
+ }
+ 
+ /*
+@@ -4107,7 +4159,7 @@ recheck:
+ 
+ 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
+ 				policy != SCHED_NORMAL && policy != SCHED_BATCH &&
+-				policy != SCHED_IDLE)
++				policy != SCHED_IDLE && policy != SCHED_GRR) /*Wendan Kang*/
+ 			return -EINVAL;
+ 	}
+ 
+@@ -6874,6 +6926,11 @@ static int cpuset_cpu_inactive(struct notifier_block *nfb, unsigned long action,
+ 
+ void __init sched_init_smp(void)
+ {
++	ktime_t period_ktime;
++	struct timespec period = {
++		.tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
++		.tv_sec = 0
++	};
+ 	cpumask_var_t non_isolated_cpus;
+ 
+ 	alloc_cpumask_var(&non_isolated_cpus, GFP_KERNEL);
+@@ -6896,6 +6953,14 @@ void __init sched_init_smp(void)
+ 
+ 	init_hrtick();
+ 
++	/* start my own grr rebalance timer */
++	#ifdef CONFIG_SMP
++	
++	period_ktime = timespec_to_ktime(period);
++	hrtimer_start(&grr_balance_timer, period_ktime, HRTIMER_MODE_REL);
++	
++	#endif
++
+ 	/* Move init over to a non-isolated CPU */
+ 	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
+ 		BUG();
+@@ -6937,6 +7002,7 @@ void __init sched_init(void)
+ #ifdef CONFIG_RT_GROUP_SCHED
+ 	alloc_size += 2 * nr_cpu_ids * sizeof(void **);
+ #endif
++
+ #ifdef CONFIG_CPUMASK_OFFSTACK
+ 	alloc_size += num_possible_cpus() * cpumask_size();
+ #endif
+@@ -6959,6 +7025,7 @@ void __init sched_init(void)
+ 		ptr += nr_cpu_ids * sizeof(void **);
+ 
+ #endif /* CONFIG_RT_GROUP_SCHED */
++
+ #ifdef CONFIG_CPUMASK_OFFSTACK
+ 		for_each_possible_cpu(i) {
+ 			per_cpu(load_balance_tmpmask, i) = (void *)ptr;
+@@ -6969,6 +7036,9 @@ void __init sched_init(void)
+ 
+ #ifdef CONFIG_SMP
+ 	init_defrootdomain();
++	/*Wendan Kang*/
++	hrtimer_init(&grr_balance_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
++	grr_balance_timer.function = print_current_time;
+ #endif
+ 
+ 	init_rt_bandwidth(&def_rt_bandwidth,
+@@ -6979,6 +7049,10 @@ void __init sched_init(void)
+ 			global_rt_period(), global_rt_runtime());
+ #endif /* CONFIG_RT_GROUP_SCHED */
+ 
++/* Wendan Kang: Do we need bandwidth?
++ * Wendan Kang: We don't.
++ */
++
+ #ifdef CONFIG_CGROUP_SCHED
+ 	list_add(&root_task_group.list, &task_groups);
+ 	INIT_LIST_HEAD(&root_task_group.children);
+@@ -7003,6 +7077,7 @@ void __init sched_init(void)
+ 		rq->calc_load_update = jiffies + LOAD_FREQ;
+ 		init_cfs_rq(&rq->cfs);
+ 		init_rt_rq(&rq->rt, rq);
++		init_grr_rq(&rq->grr);
+ #ifdef CONFIG_FAIR_GROUP_SCHED
+ 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
+ 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
+@@ -7093,14 +7168,18 @@ void __init sched_init(void)
+ 	/*
+ 	 * During early bootup we pretend to be a normal task:
+ 	 */
+-	current->sched_class = &fair_sched_class;
+-
++	 /*Wendan Kang: do we need to change that?*/
++	current->sched_class = &grr_sched_class;
++	
+ #ifdef CONFIG_SMP
+ 	zalloc_cpumask_var(&sched_domains_tmpmask, GFP_NOWAIT);
+ 	/* May be allocated at isolcpus cmdline parse time */
+ 	if (cpu_isolated_map == NULL)
+ 		zalloc_cpumask_var(&cpu_isolated_map, GFP_NOWAIT);
+ #endif
++	/* Wendan Kang: should we change that to init_sched_grr_class?
++	 * Because we use current->sched_class = &grr_sched_class; ?
++	 */
+ 	init_sched_fair_class();
+ 
+ 	scheduler_running = 1;
+@@ -7214,7 +7293,7 @@ void normalize_rt_tasks(void)
+ 
+ 	read_unlock_irqrestore(&tasklist_lock, flags);
+ }
+-
++/* Wendan Kang: do we need to add normalize_grr_task?*/
+ #endif /* CONFIG_MAGIC_SYSRQ */
+ 
+ #if defined(CONFIG_IA64) || defined(CONFIG_KGDB_KDB)
+@@ -7272,6 +7351,8 @@ static void free_sched_group(struct task_group *tg)
+ {
+ 	free_fair_sched_group(tg);
+ 	free_rt_sched_group(tg);
++	/* Wendan Kang*/
++	free_grr_sched_group(tg);
+ 	autogroup_free(tg);
+ 	kfree(tg);
+ }
+@@ -7292,6 +7373,10 @@ struct task_group *sched_create_group(struct task_group *parent)
+ 	if (!alloc_rt_sched_group(tg, parent))
+ 		goto err;
+ 
++	/* Wendan Kang*/
++	if (!alloc_grr_sched_group(tg, parent))
++		goto err;
++
+ 	spin_lock_irqsave(&task_group_lock, flags);
+ 	list_add_rcu(&tg->list, &task_groups);
+ 
+@@ -7340,6 +7425,9 @@ void sched_destroy_group(struct task_group *tg)
+  *	by now. This function just updates tsk->se.cfs_rq and tsk->se.parent to
+  *	reflect its new group.
+  */
++/* Wendan Kang: not sure whether we need to do something about
++ * move task below. Scared by what it did of RT. T_T
++ */
+ void sched_move_task(struct task_struct *tsk)
+ {
+ 	int on_rq, running;
+@@ -7361,8 +7449,10 @@ void sched_move_task(struct task_struct *tsk)
+ 		tsk->sched_class->task_move_group(tsk, on_rq);
+ 	else
+ #endif
++	if (tsk->policy != SCHED_GRR)
+ 		set_task_rq(tsk, task_cpu(tsk));
+-
++	else
++		set_task_rq(tsk, select_task_rq(tsk, 0, 0));
+ 	if (unlikely(running))
+ 		tsk->sched_class->set_curr_task(rq);
+ 	if (on_rq)
+@@ -7719,6 +7809,9 @@ static int cpu_cgroup_can_attach(struct cgroup *cgrp,
+ 	return 0;
+ }
+ 
++/* put tasks in tset into group cgrp if cgrp is not the current group of tasks
++*  Wendan Kang
++*/
+ static void cpu_cgroup_attach(struct cgroup *cgrp,
+ 			      struct cgroup_taskset *tset)
+ {
+@@ -8030,7 +8123,7 @@ static u64 cpu_rt_period_read_uint(struct cgroup *cgrp, struct cftype *cft)
+ 	return sched_group_rt_period(cgroup_tg(cgrp));
+ }
+ #endif /* CONFIG_RT_GROUP_SCHED */
+-
++/* Wendan Kang: What's this...*/
+ static struct cftype cpu_files[] = {
+ 	{
+ 		.name = "notify_on_migrate",
+diff --git a/flo-kernel/kernel/sched/debug.c b/flo-kernel/kernel/sched/debug.c
+index 09acaa1..6c963f5 100644
+--- a/flo-kernel/kernel/sched/debug.c
++++ b/flo-kernel/kernel/sched/debug.c
+@@ -15,7 +15,7 @@
+ #include <linux/seq_file.h>
+ #include <linux/kallsyms.h>
+ #include <linux/utsname.h>
+-
++#include <linux/sched.h>
+ #include "sched.h"
+ 
+ static DEFINE_SPINLOCK(sched_debug_lock);
+@@ -163,6 +163,11 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
+ 	read_unlock_irqrestore(&tasklist_lock, flags);
+ }
+ 
++void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
++{
++	SEQ_printf(m, "  .%-30s: %lu\n", "grr_nr_running", grr_rq->grr_nr_running);
++}
++
+ void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
+ {
+ 	s64 MIN_vruntime = -1, min_vruntime, max_vruntime = -1,
+@@ -303,7 +308,7 @@ static void print_cpu(struct seq_file *m, int cpu)
+ 	spin_lock_irqsave(&sched_debug_lock, flags);
+ 	print_cfs_stats(m, cpu);
+ 	print_rt_stats(m, cpu);
+-
++	print_grr_stats(m, cpu);
+ 	rcu_read_lock();
+ 	print_rq(m, rq, cpu);
+ 	rcu_read_unlock();
+diff --git a/flo-kernel/kernel/sched/grr.c b/flo-kernel/kernel/sched/grr.c
+new file mode 100644
+index 0000000..636691c
+--- /dev/null
++++ b/flo-kernel/kernel/sched/grr.c
+@@ -0,0 +1,668 @@
++#include "sched.h"
++#include <linux/mm.h>
++#include <linux/slab.h>
++#include <linux/limits.h>
++
++/*
++ * grr-task scheduling class.
++ *
++ * (NOTE: these are not related to SCHED_grr tasks which are
++ *  handled in sched_fair.c)
++ */
++
++/**************************************************************
++ * GRR operations on generic schedulable entities:
++ */
++
++/*Qiming Chen*/
++
++static char group_path_grr[PATH_MAX];
++
++static char *task_group_path_grr(struct task_group *tg)
++{
++	if (autogroup_path(tg, group_path_grr, PATH_MAX))
++		return group_path_grr;
++	/*
++	 * May be NULL if the underlying cgroup isn't fully-created yet
++	 */
++	if (!tg->css.cgroup) {
++		group_path_grr[0] = '\0';
++		return group_path_grr;
++	}
++	cgroup_path(tg->css.cgroup, group_path_grr, PATH_MAX);
++	return group_path_grr;
++}
++
++static int get_group(struct task_struct * p)
++{
++	char * st = task_group_path_grr(task_group(p));
++	if (strcmp(st, "/apps/bg_non_interactive") == 0) return 2;
++	return 1;
++}
++
++
++#define for_each_sched_grr_entity(rt_se) \
++	for (; grr_se; grr_se = NULL)
++
++#define grr_entity_is_task(grr_se) (1)
++
++void free_grr_sched_group(struct task_group *tg) {
++}
++
++int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent){
++	return 1;
++}
++
++/* We probabily don't need this if we have the task pointer Qiming Chen*/
++static inline struct task_struct *grr_task_of(struct sched_grr_entity *grr_se)
++{
++	return grr_se->task;
++}
++
++static inline struct grr_rq *grr_rq_of_se(struct sched_grr_entity *grr_se)
++{
++	struct task_struct *p = grr_task_of(grr_se);
++	struct rq *rq = task_rq(p);
++
++	return &rq->grr;
++}
++static inline struct grr_rq *group_grr_rq(struct sched_grr_entity *grr_se)
++{
++	return NULL;
++}
++
++/***************************************************************
++* Helping Methods
++*/
++
++
++/* Helper method that determines if the given entity is already
++ * in the run queue. Return 1 if true and 0 if false */
++static inline int on_grr_rq(struct sched_grr_entity *grr_se)
++{
++	/* If any item is on the grr_rq, then the run
++	 * list will NOT be empty. */
++	if (list_empty(&grr_se->run_list))
++		return 0;
++	else
++		return 1;
++}
++
++/*
++ * Update the current task's runtime statistics. Skip current tasks that
++ * are not in our scheduling class.
++ */
++static void update_curr_grr(struct rq *rq)
++{
++	struct task_struct *curr = rq->curr;
++	u64 delta_exec;
++
++	//printk("[cqm]update_curr_grr\n");
++	if (curr->sched_class != &grr_sched_class)
++		return;
++
++	delta_exec = rq->clock_task - curr->se.exec_start;
++	if (unlikely((s64)delta_exec < 0))
++		delta_exec = 0;
++
++	schedstat_set(curr->se.statistics.exec_max,
++			max(curr->se.statistics.exec_max, delta_exec));
++
++	curr->se.sum_exec_runtime += delta_exec;
++	account_group_exec_runtime(curr, delta_exec);
++
++	curr->se.exec_start = rq->clock_task;
++	cpuacct_charge(curr, delta_exec);
++}
++/*
++ * Put task to the head or the end of the run list without the overhead of
++ * dequeue followed by enqueue.
++ */
++static void requeue_grr_entity(struct grr_rq *grr_rq, struct sched_grr_entity *grr_se, int head)
++{
++	//printk("[cqm]requeue_grr_entity\n");
++	if (on_grr_rq(grr_se)) {
++		struct list_head *queue;
++		queue = &grr_rq->run_queue.run_list;
++
++		if (grr_rq->size == 1)
++			return;
++		spin_lock(&grr_rq->grr_rq_lock);
++		if (head)
++			list_move(&grr_se->run_list, queue);
++		else
++			list_move_tail(&grr_se->run_list, queue);
++		spin_unlock(&grr_rq->grr_rq_lock);
++	}
++}
++
++static void requeue_task_grr(struct rq *rq, struct task_struct *p, int head)
++{
++	struct sched_grr_entity *grr_se = &p->grr;
++	struct grr_rq *grr_rq;
++
++	//printk("[cqm]requeue_task_grr\n");
++	//printk("%s", p->comm);
++	for_each_sched_grr_entity(grr_se) {
++		grr_rq = grr_rq_of_se(grr_se);
++		requeue_grr_entity(grr_rq, grr_se, head);
++	}
++}
++
++/***************************************************************/
++
++/***************************************************************
++* load balance implementation
++*/
++#ifdef CONFIG_SMP
++
++static void grr_rq_load_balance(int g)
++{
++	int cpu;
++ 	int dest_cpu; /* id of cpu to move to */
++ 	int highest_cpu = 0;
++ 	int lowest_cpu = NR_CPUS;
++ 	struct rq *rq;
++ 	struct sched_grr_entity *highest_task;
++ 	struct list_head *head;
++ 	struct task_struct *task_to_move;
++ 	struct rq *rq_of_task_to_move;
++ 	struct rq *rq_of_lowest_grr; /*rq of thing with smallest weight */
++ 	struct rq *highest_rq = NULL, *lowest_rq = NULL;
++	struct grr_rq *lowest_grr_rq = NULL, *highest_grr_rq = NULL, *curr_grr_rq;
++ 	int lowest_size = INT_MAX;
++ 	int highest_size = INT_MIN;
++
++ 	/* get highest and lowest grr_rq Qiming Chen */
++ 	for_each_online_cpu(cpu) {
++ 		rq = cpu_rq(cpu);
++ 		if (rq == NULL)
++ 			continue;
++ 		if (cpu_group[cpu] != g)
++ 			continue;
++ 		curr_grr_rq = &rq->grr;
++ 		
++ 		if (curr_grr_rq->size > highest_size) {
++ 			highest_grr_rq = curr_grr_rq;
++ 			highest_size = curr_grr_rq->size;
++ 			highest_rq = rq;
++ 			highest_cpu = cpu;
++ 		}
++ 		if (curr_grr_rq->size < lowest_size) {
++ 			lowest_grr_rq = curr_grr_rq;
++ 			lowest_size = curr_grr_rq->size;
++ 			lowest_rq = rq;
++ 			lowest_cpu = cpu;
++ 		}
++ 	}
++ 	
++ 	if (lowest_grr_rq == NULL || highest_grr_rq == NULL)
++ 		return;
++ 	if (cpu_group[highest_cpu] != cpu_group[lowest_cpu])
++ 		return;
++ 	/* See if we can do move  */
++ 	if (lowest_grr_rq == highest_grr_rq || highest_size - lowest_size < 2)
++ 		return;
++ 	/* See if we can do move  */
++ 	rcu_read_lock();
++ 	double_rq_lock(highest_rq, lowest_rq);
++
++ 	/* See if we can do move  */
++ 	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
++ 		head = &highest_grr_rq->run_queue.run_list;
++ 		if (head->next != head) {
++ 			highest_task = list_entry(head, struct sched_grr_entity, run_list);
++			rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
++ 			dest_cpu = rq_of_lowest_grr->cpu;
++ 			task_to_move = container_of(highest_task, struct task_struct, grr);
++ 			rq_of_task_to_move = task_rq(task_to_move);
++ 			deactivate_task(rq_of_task_to_move, task_to_move, 0);
++ 			set_task_cpu(task_to_move, dest_cpu);
++ 			activate_task(rq_of_lowest_grr , task_to_move, 0);
++ 		}
++ 	}
++ 	double_rq_unlock(highest_rq, lowest_rq);
++ 	rcu_read_unlock();
++}
++
++enum hrtimer_restart print_current_time(struct hrtimer *timer)
++{
++        ktime_t period_ktime;
++        struct timespec period = {
++                .tv_nsec = SCHED_GRR_REBALANCE_TIME_PERIOD_NS,
++                .tv_sec = 0
++        };
++        //printk("[cqm]print_current_time\n");
++ 	period_ktime = timespec_to_ktime(period);
++
++        grr_rq_load_balance(1);
++        grr_rq_load_balance(2);
++
++        hrtimer_forward(timer, timer->base->get_time(), period_ktime);
++        return HRTIMER_RESTART;
++}
++
++#endif
++
++/*Wendan Kang*/
++/*The parameter(s) may have two options considering fair.c and rt.c:
++*1. struct rq *rq, struct grr_rq *grr_rq
++*2. struct grr_rq *grr_rq
++*/
++//static struct sched_grr_entity *pick_next_grr_entity(struct grr_rq * grr_rq)
++//{
++//	return NULL;
++//}
++
++#ifdef CONFIG_SCHED_DEBUG
++void print_grr_stats(struct seq_file *m, int cpu)
++{
++	struct grr_rq *grr_rq;
++
++	//printk("[cqm]print_grr_stats\n");
++	rcu_read_lock();
++	grr_rq = &cpu_rq(cpu)->grr;
++	print_grr_rq(m, cpu, grr_rq);
++	rcu_read_unlock();
++}
++#endif
++
++/*Wendan Kang: After change this fuction, change the relatives in kernel/sched/sched.h line 1197(approx)*/
++/*The parameter(s) may have two options considering fair.c and rt.c:
++*1. struct rq *rq, struct grr_rq *grr_rq
++*2. struct grr_rq *grr_rq
++* Called by _schedinit
++*/
++void init_grr_rq(struct grr_rq *grr_rq)
++{
++	struct sched_grr_entity *grr_se;
++	
++	//printk("[cqm]init_grr_rq\n");
++	grr_rq->grr_nr_running = 0;
++	grr_rq->size = 0;
++	grr_rq->curr = NULL;
++	spin_lock_init(&(grr_rq->grr_rq_lock));
++	/* Initialize the run queue list */
++	grr_se = &grr_rq->run_queue;
++	INIT_LIST_HEAD(&grr_se->run_list);
++
++	grr_se->task = NULL;
++	grr_se->time_slice = 0;
++	/* group? Qiming Chen */
++}
++
++/* Initializes the given task which is meant to be handled/processed
++ * by this scheduler */
++static void init_task_grr(struct task_struct *p)
++{
++	struct sched_grr_entity *grr_se;
++	if (p == NULL)
++		return;
++	//printk("[cqm]init_task_grr\n");
++	//printk("%s", p->comm);
++
++	grr_se = &p->grr;
++	grr_se->task = p;
++	/*init time_slice, also as time left*/
++	grr_se->time_slice = GRR_TIMESLICE;
++
++	/* Initialize the list head just to be safe */
++	INIT_LIST_HEAD(&grr_se->run_list);
++	/* group? Qiming Chen*/
++}
++
++
++static void task_fork_grr(struct task_struct *p)
++{
++	//printk("[cqm]task_fork_grr\n");
++	//printk("%s", p->comm);
++	struct sched_grr_entity *grr_entity;
++	if (p == NULL)
++		return;
++	grr_entity = &p->grr;
++	grr_entity->task = p;
++
++	/* We keep the weight of the parent. We re-initialize
++	 * the other values that are derived from the parent's weight */
++
++	grr_entity->time_slice = GRR_TIMESLICE;
++	
++}
++
++void init_sched_grr_class(void)
++{
++	//printk("[cqm]init_sched_grr_class\n");
++	/*don't know whether we need to implement that*/
++}
++
++/*Wendan Kang*/
++static void
++enqueue_task_grr(struct rq *rq, struct task_struct *p, int flags)
++{
++
++	struct list_head *head;
++	struct sched_grr_entity *new_se;
++	struct sched_grr_entity *grr_se;
++	struct grr_rq *grr_rq = &rq->grr;
++	//printk("[cqm]enqueue_task\n");
++	//printk("%s", p->comm);
++	grr_se = &grr_rq->run_queue;
++
++	init_task_grr(p); /* initializes the grr_entity in task_struct */
++	new_se = &p->grr;
++
++	/* If on rq already, don't add it */
++	if (on_grr_rq(new_se))
++		return;
++
++	spin_lock(&grr_rq->grr_rq_lock);
++
++	/* add it to the queue.*/
++	head = &grr_se->run_list;
++	list_add_tail(&new_se->run_list, head);
++
++	/* update statistics counts */
++	++grr_rq->grr_nr_running;
++	++grr_rq->size;
++	spin_unlock(&grr_rq->grr_rq_lock);
++	inc_nr_running(rq);
++}
++
++
++/*Wendan Kang*/
++static void
++dequeue_task_grr(struct rq *rq, struct task_struct *p, int flags)
++{
++	//printk("[cqm]dequeue_task_grr\n");
++	//printk("%s", p->comm);
++	struct sched_grr_entity *grr_se = &p->grr;
++	struct grr_rq *grr_rq = grr_rq_of_se(grr_se);
++
++	spin_lock(&grr_rq->grr_rq_lock);
++
++	update_curr_grr(rq);
++	if (!on_grr_rq(grr_se)) { /* Should not happen */
++		BUG();
++		dump_stack();
++	}
++
++	/* Remove the task from the queue */
++	list_del(&grr_se->run_list);
++
++	/* update statistics counts */
++	--grr_rq->grr_nr_running;
++	--grr_rq->size;
++	spin_unlock(&grr_rq->grr_rq_lock);
++	dec_nr_running(rq);
++#ifdef CONFIG_SMP
++
++	//if (rq->grr.size == 0)
++	//	grr_rq_load_balance(get_group(p));
++
++#endif
++}
++
++static void yield_task_grr(struct rq *rq)
++{
++	//printk("[cqm]yield_task_grr\n");
++	requeue_task_grr(rq, rq->curr, 0);
++}
++
++static struct sched_grr_entity *pick_next_grr_entity(struct rq *rq,
++						   struct grr_rq *grr_rq)
++{
++	struct sched_grr_entity *first;
++	struct sched_grr_entity *next = NULL;
++	struct list_head *queue;
++	//printk("[cqm]pick_next_grr_entity\n");
++	first = &grr_rq->run_queue;
++	queue = &first->run_list;
++	next = list_entry(queue->next, struct sched_grr_entity, run_list);
++
++	return next;
++}
++/*Wendan Kang*/
++static struct task_struct *pick_next_task_grr(struct rq *rq)
++{
++	struct task_struct *p;
++	struct grr_rq *grr_rq = &rq->grr;
++	struct sched_grr_entity *grr_se;
++
++	////printk("[cqm]pick_next_task_grr\n");
++	if (rq->nr_running <= 0)
++		return NULL;
++	do {
++		grr_se = pick_next_grr_entity(rq, grr_rq);
++		BUG_ON(!grr_se);
++		/* Wendan Kang: If grr_se contains a group, 
++		*  need to find the first task in that group.
++		*/
++		grr_rq = group_grr_rq(grr_se);
++	} while (grr_rq);
++
++	p = grr_task_of(grr_se);
++
++	if (p == NULL)
++		return p;
++
++	p->se.exec_start = rq->clock_task;
++
++	return p;
++}
++
++static void put_prev_task_grr(struct rq *rq, struct task_struct *prev)
++{
++	//printk("[cqm]put_prev_task_grr\n");
++	update_curr_grr(rq);
++	/*Wendan Kang: there is more we can do here*/
++}
++static void set_curr_task_grr(struct rq *rq)
++{
++	//printk("[cqm]set_curr_task_grr\n");
++	struct task_struct *p = rq->curr;
++	p->se.exec_start = rq->clock_task;
++	rq->grr.curr = &p->grr;
++}
++
++/*
++static void watchdog(struct rq *rq, struct task_struct *p)
++{
++	unsigned long soft, hard;
++	//printk("[cqm]watchdog\n");
++	//printk("%s", p->comm);
++	soft = task_rlimit(p, RLIMIT_RTTIME);
++	hard = task_rlimit_max(p, RLIMIT_RTTIME);
++
++	if (soft != RLIM_INFINITY) {
++		unsigned long next;
++
++		p->rt.timeout++;
++		next = DIV_ROUND_UP(min(soft, hard), USEC_PER_SEC/HZ);
++		if (p->rt.timeout > next)
++			p->cputime_expires.sched_exp = p->se.sum_exec_runtime;
++	}
++}
++*/
++
++static void task_tick_grr(struct rq *rq, struct task_struct *p, int queued)
++{
++	struct sched_grr_entity *grr_se = &p->grr;
++	//printk("[cqm]task_tick_grr\n");
++	//printk("%s", p->comm);
++
++	update_curr_grr(rq);
++	//watchdog(rq, p);
++	if (p->policy != SCHED_GRR)
++		return;
++	if (--p->grr.time_slice > 0)
++		return;
++	//printk("[cqm]time slice = 0\n");
++	p->grr.time_slice = GRR_TIMESLICE;
++
++	/*
++	 * Requeue to the end of queue if we (and all of our ancestors) are not the
++	 * only element on the queue
++	 */
++	for_each_sched_grr_entity(grr_se) {
++		if (grr_se->run_list.prev != grr_se->run_list.next) {
++			//printk("tick -> requeue %s \n", p->comm);
++			requeue_task_grr(rq, p, 0);
++			set_tsk_need_resched(p);
++			return;
++		}
++		set_tsk_need_resched(p);
++	}
++}
++
++/* Wendan Kang
++ * This function is called when a running process has changed its scheduler
++ * and chosen to make this scheduler (GRR), its scheduler.
++ * The ONLY THING WE NEED TO WORRRRRRRRRRRY ABOUT IS
++ * load balance, whether make a task to switch to grr runqueue will cause
++ * overload but as we implement load balance it's kind of like we don't need
++ * do extra thing here.
++ * UNLESS SOME CORNER CASEs REALLY HAPPEN T_T
++ *
++ * enqueue is called before switched_to_grr so we just set some default
++ * value as init_task_grr did.
++ * */
++static void switched_to_grr(struct rq *rq, struct task_struct *p)
++{
++	//printk("[cqm]switched_to_grr\n");
++	//printk("%s", p->comm);
++	struct sched_grr_entity *grr_entity = &p->grr;
++	grr_entity->task = p;
++
++	grr_entity->time_slice = GRR_TIMESLICE;
++}
++
++/***************************************************************
++* SMP Function below
++*/
++#ifdef CONFIG_SMP
++
++/* helper function: help to find cpu to assign task*/
++static int find_lowest_rq(struct task_struct *task)
++{
++	struct rq *rq;
++	int cpu, best_cpu, nr;
++	int lowest_nr = INT_MAX;
++
++	best_cpu = -1; /* assume no best cpu */
++	for_each_online_cpu(cpu) {
++		rq = cpu_rq(cpu);
++		nr = rq->nr_running;
++
++		if (cpu_group[cpu] != get_group(task))
++			continue;
++
++		if (nr < lowest_nr) {
++			lowest_nr = nr;
++			best_cpu = cpu;
++		}
++	}
++
++	return best_cpu;
++}
++
++static int select_task_rq_grr(struct task_struct *p, int sd_flag, int flags)
++{
++	int cpu;
++	int target;
++
++	//printk("[cqm]select_task_rq_grr\n");
++	//printk("%s", p->comm);
++	cpu = task_cpu(p);
++
++	/* For anything but wake ups, just return the task_cpu */
++	if (sd_flag != SD_BALANCE_WAKE && sd_flag != SD_BALANCE_FORK)
++		goto out;
++
++
++	rcu_read_lock();
++	target = find_lowest_rq(p);
++	if (target != -1)
++		cpu = target;
++	rcu_read_unlock();
++
++out:
++	return cpu;
++}
++
++static void task_woken_grr(struct rq *rq, struct task_struct *p) {
++	//printk("[cqm]task_woken_grr\n");
++	//printk("%s", p->comm);
++	//init_task_grr(p);
++}
++
++static void set_cpus_allowed_grr(struct task_struct *p, const struct cpumask *new_mask) {
++	/* Need implement Qiming Chen*/
++}
++
++
++/* leave then empty is OK */
++
++static void rq_online_grr(struct rq *rq) {
++}
++
++static void rq_offline_grr(struct rq *rq) {
++}
++
++static void pre_schedule_grr(struct rq *rq, struct task_struct *prev) {
++}
++
++static void post_schedule_grr(struct rq *rq) {
++}
++
++#endif
++
++static unsigned int get_rr_interval_grr(struct rq *rq, struct task_struct *task) {
++        //printk("[cqm]get_rr_interval_grr\n");
++        //printk("%s", task->comm);
++        if (task == NULL)
++                return -EINVAL;
++        return GRR_TIMESLICE;
++}
++
++static void check_preempt_curr_grr(struct rq *rq, struct task_struct *p, int flags) {
++}
++
++static void switched_from_grr(struct rq *rq, struct task_struct *p) {
++}
++
++static void prio_changed_grr(struct rq *rq, struct task_struct *p, int oldprio) {
++}
++
++/*
++ * Simple, special scheduling class for the per-CPU grr tasks:
++ */
++const struct sched_class grr_sched_class = {
++	.next 		= &fair_sched_class,              /*done*/
++	.enqueue_task		= enqueue_task_grr,      /*done*/
++	.dequeue_task		= dequeue_task_grr,      /*done*/
++	.yield_task		= yield_task_grr,            /*done*/
++	.check_preempt_curr	= check_preempt_curr_grr,/*done*/
++
++	.pick_next_task		= pick_next_task_grr,    /*done*/
++	.put_prev_task		= put_prev_task_grr,     /*done*/
++
++	.task_fork		= task_fork_grr,    /*Qiming Chen*/
++#ifdef CONFIG_SMP
++	.select_task_rq		= select_task_rq_grr,    /*done*/
++	.set_cpus_allowed       = set_cpus_allowed_grr,
++	.rq_online              = rq_online_grr,     /*dummy function*/
++	.rq_offline             = rq_offline_grr,    /*dummy function*/
++	.pre_schedule		= pre_schedule_grr,      /*dummy function*/
++	.post_schedule		= post_schedule_grr,     /*dummy function*/
++	.task_woken		= task_woken_grr,            /*dummy function*/
++#endif
++	.switched_from		= switched_from_grr,     /*dummy function*/
++
++	.set_curr_task          = set_curr_task_grr, /*done*/
++	.task_tick		= task_tick_grr,             /*done*/
++
++	.get_rr_interval	= get_rr_interval_grr,   /*not sure what it does, haven't implement*/
++
++	.prio_changed		= prio_changed_grr,      /*dummy function*/
++	.switched_to		= switched_to_grr,       /*dummy function*/
++};
+diff --git a/flo-kernel/kernel/sched/rt.c b/flo-kernel/kernel/sched/rt.c
+index 8f32475..8ee0c81 100644
+--- a/flo-kernel/kernel/sched/rt.c
++++ b/flo-kernel/kernel/sched/rt.c
+@@ -2036,7 +2036,8 @@ static unsigned int get_rr_interval_rt(struct rq *rq, struct task_struct *task)
+ }
+ 
+ const struct sched_class rt_sched_class = {
+-	.next			= &fair_sched_class,
++	.next			= &grr_sched_class,  /*Wendan Kang*/
++	//.next			= &fair_sched_class,
+ 	.enqueue_task		= enqueue_task_rt,
+ 	.dequeue_task		= dequeue_task_rt,
+ 	.yield_task		= yield_task_rt,
+diff --git a/flo-kernel/kernel/sched/sched.h b/flo-kernel/kernel/sched/sched.h
+index 5370bcb..518eb52 100644
+--- a/flo-kernel/kernel/sched/sched.h
++++ b/flo-kernel/kernel/sched/sched.h
+@@ -1,4 +1,5 @@
+-
++#ifndef __SCHED_H__
++#define __SCHED_H__
+ #include <linux/sched.h>
+ #include <linux/mutex.h>
+ #include <linux/spinlock.h>
+@@ -34,6 +35,12 @@ extern __read_mostly int scheduler_running;
+ #define NICE_0_LOAD		SCHED_LOAD_SCALE
+ #define NICE_0_SHIFT		SCHED_LOAD_SHIFT
+ 
++#ifdef CONFIG_SMP
++
++extern int cpu_group[NR_CPUS];
++
++#endif
++
+ /*
+  * These are the 'tuning knobs' of the scheduler:
+  */
+@@ -79,6 +86,7 @@ extern struct mutex sched_domains_mutex;
+ 
+ struct cfs_rq;
+ struct rt_rq;
++struct grr_rq; /*Wendan Kang*/
+ 
+ static LIST_HEAD(task_groups);
+ 
+@@ -122,7 +130,6 @@ struct task_group {
+ 
+ 	struct rt_bandwidth rt_bandwidth;
+ #endif
+-
+ 	struct rcu_head rcu;
+ 	struct list_head list;
+ 
+@@ -194,6 +201,13 @@ extern void init_tg_rt_entry(struct task_group *tg, struct rt_rq *rt_rq,
+ 		struct sched_rt_entity *rt_se, int cpu,
+ 		struct sched_rt_entity *parent);
+ 
++/* Wendan Kang: may need extern some load balance function here*/
++extern void free_grr_sched_group(struct task_group *tg);
++extern int alloc_grr_sched_group(struct task_group *tg, struct task_group *parent);
++extern void init_tg_grr_entry(struct task_group *tg, struct grr_rq *grr_rq,
++		struct sched_grr_entity *grr_se, int cpu,
++		struct sched_grr_entity *parent);
++
+ #else /* CONFIG_CGROUP_SCHED */
+ 
+ struct cfs_bandwidth { };
+@@ -311,6 +325,22 @@ struct rt_rq {
+ #endif
+ };
+ 
++//https://piazza.com/class/hxmyhj3hhcj16l?cid=338
++/* grr classes' related field in a runqueue: */
++struct grr_rq {
++	
++	unsigned long grr_nr_running;
++	/* the current size of the queue */
++	unsigned long size;
++	/* This struct is defined in sched.h  */
++	struct sched_grr_entity run_queue;
++	/* A lock to protect the GRR Run queue list */
++	spinlock_t grr_rq_lock;
++	/* Currently running entity on this GRR run queue
++	 * It's NULL if nothing is running */
++	struct sched_grr_entity *curr;
++};
++
+ #ifdef CONFIG_SMP
+ 
+ /*
+@@ -372,6 +402,7 @@ struct rq {
+ 
+ 	struct cfs_rq cfs;
+ 	struct rt_rq rt;
++	struct grr_rq grr; /*Wendan Kang*/
+ 
+ #ifdef CONFIG_FAIR_GROUP_SCHED
+ 	/* list of leaf cfs_rq on this cpu: */
+@@ -855,6 +886,7 @@ enum cpuacct_stat_index {
+ 
+ extern const struct sched_class stop_sched_class;
+ extern const struct sched_class rt_sched_class;
++extern const struct sched_class grr_sched_class;
+ extern const struct sched_class fair_sched_class;
+ extern const struct sched_class idle_sched_class;
+ 
+@@ -879,6 +911,7 @@ extern void update_group_power(struct sched_domain *sd, int cpu);
+ extern int update_runtime(struct notifier_block *nfb, unsigned long action, void *hcpu);
+ extern void init_sched_rt_class(void);
+ extern void init_sched_fair_class(void);
++extern void init_sched_grr_class(void);
+ 
+ extern void resched_task(struct task_struct *p);
+ extern void resched_cpu(int cpu);
+@@ -1152,9 +1185,11 @@ extern struct sched_entity *__pick_first_entity(struct cfs_rq *cfs_rq);
+ extern struct sched_entity *__pick_last_entity(struct cfs_rq *cfs_rq);
+ extern void print_cfs_stats(struct seq_file *m, int cpu);
+ extern void print_rt_stats(struct seq_file *m, int cpu);
++extern void print_grr_stats(struct seq_file *m, int cpu);
+ 
+ extern void init_cfs_rq(struct cfs_rq *cfs_rq);
+ extern void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq);
++extern void init_grr_rq(struct grr_rq *grr_rq); /*Wendan Kang*/
+ extern void unthrottle_offline_cfs_rqs(struct rq *rq);
+ 
+ extern void account_cfs_bandwidth_used(int enabled, int was_enabled);
+@@ -1168,3 +1203,5 @@ enum rq_nohz_flag_bits {
+ 
+ #define nohz_flags(cpu)	(&cpu_rq(cpu)->nohz_flags)
+ #endif
++
++#endif
+diff --git a/q3/cpu-alloc.c b/q3/cpu-alloc.c
+new file mode 100644
+index 0000000..7bb80d6
+--- /dev/null
++++ b/q3/cpu-alloc.c
+@@ -0,0 +1,25 @@
++#include <stdlib.h>
++#include <stdio.h>
++#include <unistd.h>
++#include <sys/types.h>
++#include <sys/wait.h>
++#include <sys/syscall.h>
++
++
++int main(int argc, const char *argv[])
++{
++	int group;
++	int numCPU;
++	int i;
++	printf("input group\n");
++	
++	scanf("%d", &group);
++	
++	printf("input num\n");
++	
++	scanf("%d", &numCPU);
++	
++	i = syscall(378, numCPU, group);
++	printf("%d", i);
++	return 0;
++}
+diff --git a/test/test.c b/test/test.c
+index 7c5d50a..a2adde0 100644
+--- a/test/test.c
++++ b/test/test.c
+@@ -1,4 +1,8 @@
+ int main(int argc, char **argv) 
+ {
++	int i = 0;
++
++	while(1)
++		i = 1;
+ 	return 0;
+ }
+diff --git a/test2/test2.c b/test2/test2.c
+new file mode 100644
+index 0000000..f38ee5b
+--- /dev/null
++++ b/test2/test2.c
+@@ -0,0 +1,23 @@
++#include <errno.h>
++#include <string.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <unistd.h>
++#include <sys/syscall.h>
++#include <sched.h>
++#include "../flo-kernel/include/linux/sched.h"
++
++int main(int argc, char **argv) 
++{
++
++	struct sched_param p;
++	//p.sched_priority = 99;
++	int i = 0;
++	scanf("%d", &i);
++	printf("%d", i);
++	pid_t t = (pid_t) i;
++	printf("%d",sched_setscheduler(t, 6, &p));
++		printf("OK");
++	printf(strerror(errno));
++	return 0;
++}

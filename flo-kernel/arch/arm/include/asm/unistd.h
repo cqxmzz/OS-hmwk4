@@ -404,7 +404,7 @@
 #define __NR_setns			(__NR_SYSCALL_BASE+375)
 #define __NR_process_vm_readv		(__NR_SYSCALL_BASE+376)
 #define __NR_process_vm_writev		(__NR_SYSCALL_BASE+377)
- #define __NR_sched_set_CPUgroup		(__NR_SYSCALL_BASE+378) /*part 2 system call for assigning cpu to groups*/
+#define __NR_sched_set_CPUgroup		(__NR_SYSCALL_BASE+378)
 
 /*
  * The following SWIs are ARM private.

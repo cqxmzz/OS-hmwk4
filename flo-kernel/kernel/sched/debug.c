@@ -165,7 +165,8 @@ static void print_rq(struct seq_file *m, struct rq *rq, int rq_cpu)
 
 void print_grr_rq(struct seq_file *m, int cpu, struct grr_rq *grr_rq)
 {
-	SEQ_printf(m, "  .%-30s: %lu\n", "grr_nr_running", grr_rq->grr_nr_running);
+	SEQ_printf(m, "  .%-30s: %lu\n", "grr_nr_running",
+			grr_rq->grr_nr_running);
 }
 
 void print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq)
