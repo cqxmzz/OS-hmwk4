@@ -175,19 +175,13 @@ static void grr_rq_load_balance(int g)
 
  	/* get highest and lowest grr_rq Qiming Chen */
  	for_each_online_cpu(cpu) {
- 		print
  		rq = cpu_rq(cpu);
  		if (rq == NULL)
  			continue;
  		if (cpu_group[cpu] != g)
  			continue;
  		curr_grr_rq = &rq->grr;
- 		printk("balance");
  		
- 		printk("%d\n", cpu);
- 		printk("%d\n", curr_grr_rq->size);
- 		printk("%d\n", cpu_group[cpu]);
-
  		if (curr_grr_rq->size > highest_size) {
  			highest_grr_rq = curr_grr_rq;
  			highest_size = curr_grr_rq->size;
@@ -215,7 +209,7 @@ static void grr_rq_load_balance(int g)
 
  	/* See if we can do move  */
  	if (highest_grr_rq->size - lowest_grr_rq->size >= 2) {
- 		shead = &highest_grr_rq->run_queue.run_list;
+ 		head = &highest_grr_rq->run_queue.run_list;
  		if (head->next != head) {
  			highest_task = list_entry(head, struct sched_grr_entity, run_list);
 			rq_of_lowest_grr = container_of(lowest_grr_rq, struct rq, grr);
