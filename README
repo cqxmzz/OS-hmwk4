@@ -1,0 +1,15 @@
+Experiment 1: performance of more foreground cpus
+Add one more core to foreground group.
+We invoked our test program cpu-alloc to change the allocation of cpus. In the set of
+ 3 cpu in foreground and 1 cpu in background, we didn't observe 3 times increase of
+ performance. However we could get some sense of smooth when we played around with
+ apps.
+
+Experiment 2: performance of less foreground cpus
+Decrease cpu in background group.
+Again we invoked cpu-alloc. In the set of 1 cpu in foreground and 3 cpu in background,
+the performance drastically degraded.
+
+Experiment 3: compare our scheduler with default scheduler
+The score of Geekbench with default scheduler is 586(single core), 1761(multi-core)
+After deployment of our scheduler. The score turned to be 582(single core), 979(multi-core)
